@@ -18,7 +18,7 @@ import (
 	internalqueue "k8s.io/kubernetes/pkg/scheduler/internal/queue"
 	"k8s.io/kubernetes/pkg/scheduler/metrics"
 	st "k8s.io/kubernetes/pkg/scheduler/testing"
-	"k8s.io/kubernetes/pkg/scratch/pretenderclientset"
+	"k8s.io/kubernetes/pkg/scratch/pretender"
 	"time"
 )
 
@@ -64,7 +64,7 @@ func CreateTestFramework() framework.Framework {
 		},
 		"",
 		frameworkruntime.WithPodNominator(internalqueue.NewPodNominator(nil)),
-		frameworkruntime.WithClientSet(pretenderclientset.NewPretenderClientset()),
+		frameworkruntime.WithClientSet(pretender.NewPretenderClientset()),
 	)
 	if err != nil {
 		panic(err)

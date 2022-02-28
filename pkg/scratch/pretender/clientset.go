@@ -1,4 +1,4 @@
-package pretenderclientset
+package pretender
 
 import (
 	"k8s.io/client-go/discovery"
@@ -47,11 +47,10 @@ import (
 	storagev1 "k8s.io/client-go/kubernetes/typed/storage/v1"
 	storagev1alpha1 "k8s.io/client-go/kubernetes/typed/storage/v1alpha1"
 	storagev1beta1 "k8s.io/client-go/kubernetes/typed/storage/v1beta1"
-	"k8s.io/kubernetes/pkg/scratch/pretendercore"
 )
 
 type Clientset struct {
-	// TODO
+	core *CoreV1
 }
 
 func (c Clientset) Discovery() discovery.DiscoveryInterface {
@@ -160,7 +159,7 @@ func (c Clientset) CoordinationV1() coordinationv1.CoordinationV1Interface {
 }
 
 func (c Clientset) CoreV1() corev1.CoreV1Interface {
-	return pretendercore.CoreV1{}
+	return c.core
 }
 
 func (c Clientset) DiscoveryV1() discoveryv1.DiscoveryV1Interface {
@@ -284,5 +283,5 @@ func (c Clientset) StorageV1alpha1() storagev1alpha1.StorageV1alpha1Interface {
 }
 
 func NewPretenderClientset() *Clientset {
-	return &Clientset{}
+	return &Clientset{NewPretenderCoreV1()}
 }
