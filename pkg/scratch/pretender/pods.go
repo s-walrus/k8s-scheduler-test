@@ -75,9 +75,9 @@ func (c Pods) UpdateEphemeralContainers(ctx context.Context, podName string, pod
 }
 
 func (c Pods) Bind(ctx context.Context, binding *v1.Binding, opts metav1.CreateOptions) error {
-	nodeName := binding.Target.Name
-	podName := binding.ObjectMeta.Name
-	panic("implement me")
+	//nodeName := binding.Target.Name
+	//podName := binding.ObjectMeta.Name
+	//panic("implement me")
 	return nil
 }
 

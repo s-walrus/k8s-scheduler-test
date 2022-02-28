@@ -8,6 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/apis/config"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
@@ -65,6 +66,7 @@ func CreateTestFramework() framework.Framework {
 		"",
 		frameworkruntime.WithPodNominator(internalqueue.NewPodNominator(nil)),
 		frameworkruntime.WithClientSet(pretender.NewPretenderClientset()),
+		frameworkruntime.WithEventRecorder(events.NewFakeRecorder(256)),
 	)
 	if err != nil {
 		panic(err)
