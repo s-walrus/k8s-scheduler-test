@@ -162,6 +162,10 @@ func (c Clientset) CoreV1() corev1.CoreV1Interface {
 	return c.core
 }
 
+func (c Clientset) PretenderCoreV1() *CoreV1 {
+	return c.core
+}
+
 func (c Clientset) DiscoveryV1() discoveryv1.DiscoveryV1Interface {
 	//TODO implement me
 	panic("implement me")
@@ -282,6 +286,6 @@ func (c Clientset) StorageV1alpha1() storagev1alpha1.StorageV1alpha1Interface {
 	panic("implement me")
 }
 
-func NewPretenderClientset() *Clientset {
-	return &Clientset{NewPretenderCoreV1()}
+func NewClientset(ps *State) *Clientset {
+	return &Clientset{NewPretenderCoreV1(ps)}
 }

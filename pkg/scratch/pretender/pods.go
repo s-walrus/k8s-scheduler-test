@@ -12,7 +12,9 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-type Pods struct{}
+type Pods struct {
+	pretenderState *State
+}
 
 func (c Pods) Create(ctx context.Context, pod *v1.Pod, opts metav1.CreateOptions) (*v1.Pod, error) {
 	//TODO implement me
@@ -106,6 +108,8 @@ func (c Pods) ProxyGet(scheme, name, port, path string, params map[string]string
 	panic("implement me")
 }
 
-func NewPods() *Pods {
-	return &Pods{}
+func NewPods(ps *State) *Pods {
+	return &Pods{
+		pretenderState: ps,
+	}
 }

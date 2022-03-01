@@ -56,7 +56,7 @@ func CreateTestScheduler(ctx context.Context) *Scheduler {
 	return &sched
 }
 
-func CreateTestFramework() framework.Framework {
+func NewTestFramework(ps *pretender.State) framework.Framework {
 	fwk, err := st.NewFramework(
 		[]st.RegisterPluginFunc{
 			st.RegisterQueueSortPlugin(queuesort.Name, queuesort.New),
@@ -65,7 +65,7 @@ func CreateTestFramework() framework.Framework {
 		},
 		"",
 		frameworkruntime.WithPodNominator(internalqueue.NewPodNominator(nil)),
-		frameworkruntime.WithClientSet(pretender.NewPretenderClientset()),
+		frameworkruntime.WithClientSet(pretender.NewClientset(ps)),
 		frameworkruntime.WithEventRecorder(events.NewFakeRecorder(256)),
 	)
 	if err != nil {

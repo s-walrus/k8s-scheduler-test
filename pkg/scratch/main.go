@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/scheduler"
+	"k8s.io/kubernetes/pkg/scratch/pretender"
 )
 
 func InitLogs() {
@@ -15,11 +16,21 @@ func InitLogs() {
 	flag.Parse()
 }
 
+func EvalSchedulerDemo() []pretender.PodsSnapshot {
+	ctx := context.Background()
+	ps := pretender.NewState()
+	sched := scheduler.CreateTestScheduler(ctx)
+	fwk := scheduler.NewTestFramework(&ps)
+
+	// schedule some pods
+	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "123", UID: types.UID("321")}, Spec: v1.PodSpec{}}
+	scheduler.FakeScheduleOne(ctx, sched, fwk, pod)
+
+	return []pretender.PodsSnapshot{ps.GetSnapshot()}
+}
+
 func main() {
 	InitLogs()
-	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "123", UID: types.UID("321")}}
-	ctx := context.Background()
-	sched := scheduler.CreateTestScheduler(ctx)
-	fwk := scheduler.CreateTestFramework()
-	scheduler.FakeScheduleOne(ctx, sched, fwk, pod)
+
+	EvalSchedulerDemo()
 }

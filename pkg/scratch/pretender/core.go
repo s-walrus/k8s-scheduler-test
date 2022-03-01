@@ -63,6 +63,10 @@ func (c CoreV1) Pods(namespace string) v1.PodInterface {
 	return c.pods
 }
 
+func (c CoreV1) PretenderPods(namespace string) *Pods {
+	return c.pods
+}
+
 func (c CoreV1) PodTemplates(namespace string) v1.PodTemplateInterface {
 	//TODO implement me
 	panic("implement me")
@@ -93,8 +97,8 @@ func (c CoreV1) ServiceAccounts(namespace string) v1.ServiceAccountInterface {
 	panic("implement me")
 }
 
-func NewPretenderCoreV1() *CoreV1 {
+func NewPretenderCoreV1(ps *State) *CoreV1 {
 	return &CoreV1{
-		pods: NewPods(),
+		pods: NewPods(ps),
 	}
 }
