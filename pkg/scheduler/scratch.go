@@ -75,7 +75,7 @@ func NewTestFramework(ps *pretender.State) framework.Framework {
 	return fwk
 }
 
-func SchedulePodWithTraits(sched *Scheduler, fwk framework.Framework, ps *pretender.State, pod *v1.Pod, traits []*pretender.PodTrait) {
+func SchedulePodWithTraits(sched *Scheduler, fwk framework.Framework, ps *pretender.State, pod *v1.Pod, traits ...pretender.PodTrait) {
 	ok := ps.PrepareTraits(traits)
 	if !ok {
 		panic("prepare traits error")

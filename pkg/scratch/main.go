@@ -10,6 +10,7 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/scheduler"
 	"k8s.io/kubernetes/pkg/scratch/pretender"
+	"k8s.io/kubernetes/pkg/scratch/pretender/podtraits"
 )
 
 func InitLogs() {
@@ -17,7 +18,7 @@ func InitLogs() {
 	flag.Parse()
 }
 
-func EvalSchedulerDemo() []pretender.PodsSnapshot {
+func EvalSchedulerDemo() []pretender.StateSnapshot {
 	ctx := context.Background()
 	ps := pretender.NewState()
 	sched := scheduler.CreateTestScheduler(ctx)
@@ -30,13 +31,13 @@ func EvalSchedulerDemo() []pretender.PodsSnapshot {
 
 	// schedule some pods
 	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "123", UID: types.UID("321")}, Spec: v1.PodSpec{}}
-	scheduler.SchedulePodWithTraits(sched, fwk, &ps, pod, []*pretender.PodTrait{})
+	scheduler.SchedulePodWithTraits(sched, fwk, &ps, pod, podtraits.AffectNodeCount{})
 
-	return []pretender.PodsSnapshot{ps.GetSnapshot()}
+	return []pretender.StateSnapshot{ps.GetSnapshot()}
 }
 
 func main() {
 	InitLogs()
 
-	fmt.Println(EvalSchedulerDemo()[0])
+	fmt.Println(EvalSchedulerDemo()[0]["my node"])
 }

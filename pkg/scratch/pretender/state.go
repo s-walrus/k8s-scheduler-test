@@ -5,14 +5,15 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-type PodsSnapshot struct {
+type PodTrait interface {
+	Apply(snapshot *NodeSnapshot)
 }
 
 type nodeState struct {
 	name        string
 	cpuCapacity float64
 	memCapacity float64
-	pods        map[types.UID][]*PodTrait
+	pods        map[types.UID][]PodTrait
 }
 
 func NewNodeState(name string, cpu, mem float64) *nodeState {
@@ -20,28 +21,30 @@ func NewNodeState(name string, cpu, mem float64) *nodeState {
 		name:        name,
 		cpuCapacity: cpu,
 		memCapacity: mem,
-		pods:        make(map[types.UID][]*PodTrait),
+		pods:        make(map[types.UID][]PodTrait),
 	}
 }
 
 type State struct {
 	nodes          map[string]*nodeState
-	preparedTraits []*PodTrait
+	preparedTraits []PodTrait
 }
 
-func (c *State) GetSnapshot() PodsSnapshot {
-	return PodsSnapshot{
-		// TODO
+func (c *State) GetSnapshot() StateSnapshot {
+	snapshot := StateSnapshot{}
+	for nodeName, nodeState := range c.nodes {
+		snapshot[nodeName] = makeNodeSnapshot(nodeState)
 	}
+	return snapshot
 }
 
-func (c *State) PrepareTraits(traits []*PodTrait) bool {
+func (c *State) PrepareTraits(traits []PodTrait) bool {
 	ok := c.preparedTraits == nil
 	c.preparedTraits = traits
 	return ok
 }
 
-func (c *State) PopPreparedTraits() []*PodTrait {
+func (c *State) PopPreparedTraits() []PodTrait {
 	ret := c.preparedTraits
 	c.preparedTraits = nil
 	return ret
