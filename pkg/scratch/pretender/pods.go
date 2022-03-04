@@ -13,7 +13,7 @@ import (
 )
 
 type Pods struct {
-	pretenderState *State
+	ps *State
 }
 
 func (c Pods) Create(ctx context.Context, pod *v1.Pod, opts metav1.CreateOptions) (*v1.Pod, error) {
@@ -79,8 +79,10 @@ func (c Pods) UpdateEphemeralContainers(ctx context.Context, podName string, pod
 func (c Pods) Bind(ctx context.Context, binding *v1.Binding, opts metav1.CreateOptions) error {
 	//nodeName := binding.Target.Name
 	//podName := binding.ObjectMeta.Name
-	//panic("implement me")
-	return nil
+	nodeName := binding.Target.Name
+	podUID := binding.ObjectMeta.UID
+	err := c.ps.Bind(nodeName, podUID)
+	return err
 }
 
 func (c Pods) Evict(ctx context.Context, eviction *v1beta1.Eviction) error {
@@ -110,6 +112,6 @@ func (c Pods) ProxyGet(scheme, name, port, path string, params map[string]string
 
 func NewPods(ps *State) *Pods {
 	return &Pods{
-		pretenderState: ps,
+		ps: ps,
 	}
 }

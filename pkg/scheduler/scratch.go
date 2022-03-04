@@ -27,6 +27,7 @@ func CreateTestScheduler(ctx context.Context) *Scheduler {
 	var extenders []framework.Extender
 	stop := make(chan struct{})
 	defer close(stop) // not sure what it is for
+	// TODO sync pretender.State with Cache
 	scache := internalcache.New(100*time.Millisecond, stop)
 	node := v1.Node{
 		ObjectMeta: metav1.ObjectMeta{Name: "my node", UID: types.UID("my node")},
@@ -74,9 +75,22 @@ func NewTestFramework(ps *pretender.State) framework.Framework {
 	return fwk
 }
 
-func FakeScheduleOne(ctx context.Context, sched *Scheduler, fwk framework.Framework, pod *v1.Pod) {
+func SchedulePodWithTraits(sched *Scheduler, fwk framework.Framework, ps *pretender.State, pod *v1.Pod, traits []*pretender.PodTrait) {
+	ok := ps.PrepareTraits(traits)
+	if !ok {
+		panic("prepare traits error")
+	}
 
-	// Create pod
+	ctx := context.Background()
+	fakeScheduleOne(ctx, sched, fwk, pod)
+
+	if ps.PopPreparedTraits() != nil {
+		panic("prepare traits error to be expected")
+	}
+}
+
+// fakeScheduleOne must be as similar as possible to the original ScheduleOne implementation
+func fakeScheduleOne(ctx context.Context, sched *Scheduler, fwk framework.Framework, pod *v1.Pod) {
 	//podInfo := sched.NextPod()
 	podInfo := &framework.QueuedPodInfo{
 		PodInfo: &framework.PodInfo{
@@ -257,7 +271,6 @@ func FakeScheduleOne(ctx context.Context, sched *Scheduler, fwk framework.Framew
 			return
 		}
 
-		// FIXME fake binding somehow
 		err := sched.bind(bindingCycleCtx, fwk, assumedPod, scheduleResult.SuggestedHost, state)
 		//var err error = nil
 		if err != nil {

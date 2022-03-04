@@ -162,10 +162,6 @@ func (c Clientset) CoreV1() corev1.CoreV1Interface {
 	return c.core
 }
 
-func (c Clientset) PretenderCoreV1() *CoreV1 {
-	return c.core
-}
-
 func (c Clientset) DiscoveryV1() discoveryv1.DiscoveryV1Interface {
 	//TODO implement me
 	panic("implement me")

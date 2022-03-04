@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -22,9 +23,14 @@ func EvalSchedulerDemo() []pretender.PodsSnapshot {
 	sched := scheduler.CreateTestScheduler(ctx)
 	fwk := scheduler.NewTestFramework(&ps)
 
+	err := ps.AddNode(pretender.NewNodeState("my node", 0, 0))
+	if err != nil {
+		panic(err)
+	}
+
 	// schedule some pods
 	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "123", UID: types.UID("321")}, Spec: v1.PodSpec{}}
-	scheduler.FakeScheduleOne(ctx, sched, fwk, pod)
+	scheduler.SchedulePodWithTraits(sched, fwk, &ps, pod, []*pretender.PodTrait{})
 
 	return []pretender.PodsSnapshot{ps.GetSnapshot()}
 }
@@ -32,5 +38,5 @@ func EvalSchedulerDemo() []pretender.PodsSnapshot {
 func main() {
 	InitLogs()
 
-	EvalSchedulerDemo()
+	fmt.Println(EvalSchedulerDemo()[0])
 }
