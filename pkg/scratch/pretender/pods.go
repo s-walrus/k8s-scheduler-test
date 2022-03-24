@@ -9,11 +9,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
+	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
 
 type Pods struct {
-	ps *State
+	ps     *State
+	client clientset.Interface
 }
 
 func (c Pods) Create(ctx context.Context, pod *v1.Pod, opts metav1.CreateOptions) (*v1.Pod, error) {

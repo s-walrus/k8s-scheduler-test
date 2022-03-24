@@ -6,7 +6,8 @@ import (
 )
 
 type CoreV1 struct {
-	pods *Pods
+	pods  *Pods
+	nodes *Nodes
 }
 
 func (c CoreV1) RESTClient() rest.Interface {
@@ -45,8 +46,7 @@ func (c CoreV1) Namespaces() v1.NamespaceInterface {
 }
 
 func (c CoreV1) Nodes() v1.NodeInterface {
-	//TODO implement me
-	panic("implement me")
+	return c.nodes
 }
 
 func (c CoreV1) PersistentVolumes() v1.PersistentVolumeInterface {
@@ -99,6 +99,7 @@ func (c CoreV1) ServiceAccounts(namespace string) v1.ServiceAccountInterface {
 
 func NewPretenderCoreV1(ps *State) *CoreV1 {
 	return &CoreV1{
-		pods: NewPods(ps),
+		pods:  NewPods(ps),
+		nodes: NewNodes(ps),
 	}
 }

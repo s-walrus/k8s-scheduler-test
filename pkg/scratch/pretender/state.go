@@ -2,6 +2,8 @@ package pretender
 
 import (
 	"errors"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -10,19 +12,30 @@ type PodTrait interface {
 }
 
 type nodeState struct {
+	v1Node      *v1.Node
 	name        string
-	cpuCapacity float64
-	memCapacity float64
+	cpuCapacity resource.Quantity
+	memCapacity resource.Quantity
 	pods        map[types.UID][]PodTrait
 }
 
-func NewNodeState(name string, cpu, mem float64) *nodeState {
+func newNodeState(v1Node *v1.Node, name string, cpu, mem *resource.Quantity) *nodeState {
 	return &nodeState{
+		v1Node:      v1Node,
 		name:        name,
-		cpuCapacity: cpu,
-		memCapacity: mem,
+		cpuCapacity: *cpu,
+		memCapacity: *mem,
 		pods:        make(map[types.UID][]PodTrait),
 	}
+}
+
+func NewNodeState(node *v1.Node) *nodeState {
+	return newNodeState(
+		node,
+		node.Name,
+		node.Status.Capacity.Cpu(),
+		node.Status.Capacity.Memory(),
+	)
 }
 
 type State struct {
@@ -36,6 +49,14 @@ func (c *State) GetSnapshot() StateSnapshot {
 		snapshot[nodeName] = makeNodeSnapshot(nodeState)
 	}
 	return snapshot
+}
+
+func (c *State) GetNode(name string) (*v1.Node, error) {
+	node, prs := c.nodes[name]
+	if !prs {
+		return nil, errors.New("no node with name '" + name + "' found")
+	}
+	return node.v1Node, nil
 }
 
 func (c *State) PrepareTraits(traits []PodTrait) bool {
@@ -58,7 +79,7 @@ func (c *State) Bind(nodeName string, podUID types.UID) error {
 
 	node, prs := c.nodes[nodeName]
 	if !prs {
-		return errors.New("node with given name was not initialized")
+		return errors.New("no node with name '" + nodeName + "' found")
 	}
 
 	// assuming all UIDs are unique

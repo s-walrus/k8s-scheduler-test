@@ -4,15 +4,13 @@ import (
 	"context"
 	"fmt"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/apis/config"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/defaultbinder"
+	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/nodeaffinity"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/queuesort"
 	frameworkruntime "k8s.io/kubernetes/pkg/scheduler/framework/runtime"
 	internalcache "k8s.io/kubernetes/pkg/scheduler/internal/cache"
@@ -29,21 +27,7 @@ func CreateTestScheduler(ctx context.Context) *Scheduler {
 	defer close(stop) // not sure what it is for
 	// TODO sync pretender.State with Cache
 	scache := internalcache.New(100*time.Millisecond, stop)
-	node := v1.Node{
-		ObjectMeta: metav1.ObjectMeta{Name: "my node", UID: types.UID("my node")},
-		Status: v1.NodeStatus{
-			Capacity: v1.ResourceList{
-				v1.ResourceCPU:    *(resource.NewQuantity(100500, resource.DecimalSI)),
-				v1.ResourceMemory: *(resource.NewQuantity(100500, resource.DecimalSI)),
-				v1.ResourcePods:   *(resource.NewQuantity(10, resource.DecimalSI)),
-			},
-			Allocatable: v1.ResourceList{
-				v1.ResourceCPU:    *(resource.NewQuantity(100500, resource.DecimalSI)),
-				v1.ResourceMemory: *(resource.NewQuantity(100500, resource.DecimalSI)),
-				v1.ResourcePods:   *(resource.NewQuantity(10, resource.DecimalSI)),
-			}},
-	}
-	scache.AddNode(&node)
+	//scache.AddNode(&node)
 	algo := NewGenericScheduler(
 		scache,
 		internalcache.NewEmptySnapshot(),
@@ -61,6 +45,7 @@ func NewTestFramework(ps *pretender.State) framework.Framework {
 	fwk, err := st.NewFramework(
 		[]st.RegisterPluginFunc{
 			st.RegisterQueueSortPlugin(queuesort.Name, queuesort.New),
+			st.RegisterFilterPlugin(nodeaffinity.Name, nodeaffinity.New),
 			st.RegisterFilterPlugin("TrueFilter", st.NewTrueFilterPlugin),
 			st.RegisterBindPlugin(defaultbinder.Name, defaultbinder.New),
 		},
