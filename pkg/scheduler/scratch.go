@@ -4,13 +4,15 @@ import (
 	"context"
 	"fmt"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/apis/config"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/defaultbinder"
-	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/nodeaffinity"
+	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/feature"
+	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/interpodaffinity"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/queuesort"
 	frameworkruntime "k8s.io/kubernetes/pkg/scheduler/framework/runtime"
 	internalcache "k8s.io/kubernetes/pkg/scheduler/internal/cache"
@@ -21,7 +23,11 @@ import (
 	"time"
 )
 
-func CreateTestScheduler(ctx context.Context) *Scheduler {
+func NewSnapshot() *internalcache.Snapshot {
+	return internalcache.NewEmptySnapshot()
+}
+
+func CreateTestScheduler(ctx context.Context, snapshot *internalcache.Snapshot) *Scheduler {
 	var extenders []framework.Extender
 	stop := make(chan struct{})
 	defer close(stop) // not sure what it is for
@@ -30,7 +36,7 @@ func CreateTestScheduler(ctx context.Context) *Scheduler {
 	//scache.AddNode(&node)
 	algo := NewGenericScheduler(
 		scache,
-		internalcache.NewEmptySnapshot(),
+		snapshot,
 		schedulerapi.DefaultPercentageOfNodesToScore,
 	)
 	sched := Scheduler{
@@ -41,18 +47,32 @@ func CreateTestScheduler(ctx context.Context) *Scheduler {
 	return &sched
 }
 
-func NewTestFramework(ps *pretender.State) framework.Framework {
+func NewInterPodAffinity(plArgs runtime.Object, h framework.Handle) (framework.Plugin, error) {
+	return interpodaffinity.New(plArgs, h, feature.Features{
+		EnablePodAffinityNamespaceSelector: true,
+		EnablePodDisruptionBudget:          false,
+		EnablePodOverhead:                  false,
+		EnableReadWriteOncePod:             false,
+		EnableVolumeCapacityPriority:       false,
+		EnableCSIStorageCapacity:           false,
+	})
+}
+
+func NewTestFramework(ps *pretender.State, snapshot *internalcache.Snapshot) framework.Framework {
+	cs := pretender.NewClientset(ps)
 	fwk, err := st.NewFramework(
 		[]st.RegisterPluginFunc{
 			st.RegisterQueueSortPlugin(queuesort.Name, queuesort.New),
-			st.RegisterFilterPlugin(nodeaffinity.Name, nodeaffinity.New),
+			st.RegisterPluginAsExtensions(interpodaffinity.Name, NewInterPodAffinity, "PreFilter", "Filter", "PreScore", "Score"),
 			st.RegisterFilterPlugin("TrueFilter", st.NewTrueFilterPlugin),
 			st.RegisterBindPlugin(defaultbinder.Name, defaultbinder.New),
 		},
 		"",
 		frameworkruntime.WithPodNominator(internalqueue.NewPodNominator(nil)),
-		frameworkruntime.WithClientSet(pretender.NewClientset(ps)),
+		frameworkruntime.WithClientSet(cs),
 		frameworkruntime.WithEventRecorder(events.NewFakeRecorder(256)),
+		frameworkruntime.WithSnapshotSharedLister(snapshot),
+		frameworkruntime.WithInformerFactory(NewInformerFactory(cs, 0)),
 	)
 	if err != nil {
 		panic(err)
@@ -80,6 +100,14 @@ func fakeScheduleOne(ctx context.Context, sched *Scheduler, fwk framework.Framew
 	podInfo := &framework.QueuedPodInfo{
 		PodInfo: &framework.PodInfo{
 			Pod: pod,
+			//RequiredAntiAffinityTerms: []framework.AffinityTerm{
+			//	framework.AffinityTerm{
+			//		Namespaces:        nil,
+			//		Selector:          nil,
+			//		TopologyKey:       "",
+			//		NamespaceSelector: nil,
+			//	},
+			//},
 		},
 	}
 

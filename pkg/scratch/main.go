@@ -20,9 +20,46 @@ func InitLogs() {
 	flag.Parse()
 }
 
+func NewTestPod(name string) *v1.Pod {
+	return &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			UID:       types.UID(name),
+			Namespace: "global-namespace",
+			Labels: map[string]string{
+				"name":                name,
+				"anti-affinity-group": "1",
+			},
+		},
+		Spec: v1.PodSpec{
+			Affinity: &v1.Affinity{
+				PodAntiAffinity: &v1.PodAntiAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
+						{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels:      map[string]string{"anti-affinity-group": "1"},
+								MatchExpressions: []metav1.LabelSelectorRequirement{},
+							},
+							Namespaces:        []string{"global-namespace"},
+							TopologyKey:       "name",
+							NamespaceSelector: nil,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func NewTestNode(name string) *v1.Node {
 	node := v1.Node{
-		ObjectMeta: metav1.ObjectMeta{Name: name, UID: types.UID("my node")},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			UID:  types.UID("my node"),
+			Labels: map[string]string{
+				"name": name,
+			},
+		},
 		Status: v1.NodeStatus{
 			Capacity: v1.ResourceList{
 				v1.ResourceCPU:    *(resource.NewQuantity(100500, resource.DecimalSI)),
@@ -50,17 +87,18 @@ func addNode(ctx context.Context, fwk framework.Framework, sched *scheduler.Sche
 func EvalSchedulerDemo() []pretender.StateSnapshot {
 	ctx := context.Background()
 	ps := pretender.NewState()
-	sched := scheduler.CreateTestScheduler(ctx)
-	fwk := scheduler.NewTestFramework(&ps)
+	snapshot := scheduler.NewSnapshot()
+	sched := scheduler.CreateTestScheduler(ctx, snapshot)
+	fwk := scheduler.NewTestFramework(&ps, snapshot)
 
 	addNode(ctx, fwk, sched, NewTestNode("My node #1"))
 	addNode(ctx, fwk, sched, NewTestNode("My node #2"))
+	addNode(ctx, fwk, sched, NewTestNode("My node #3"))
 
 	// schedule some pods
-	pods := []*v1.Pod{
-		&v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "1", UID: types.UID("1")}, Spec: v1.PodSpec{}},
-		&v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "2", UID: types.UID("2")}, Spec: v1.PodSpec{}},
-		&v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "3", UID: types.UID("3")}, Spec: v1.PodSpec{}},
+	var pods []*v1.Pod
+	for i := 0; i < 16; i++ {
+		pods = append(pods, NewTestPod(fmt.Sprintf("pod%d", i)))
 	}
 	for _, pod := range pods {
 		scheduler.SchedulePodWithTraits(sched, fwk, &ps, pod, podtraits.AffectNodeCount{})

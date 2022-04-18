@@ -18,6 +18,7 @@ package interpodaffinity
 
 import (
 	"fmt"
+	staticnslister "k8s.io/kubernetes/pkg/scratch/nslister"
 
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -92,7 +93,10 @@ func New(plArgs runtime.Object, h framework.Handle, fts feature.Features) (frame
 	}
 
 	if pl.enableNamespaceSelector {
-		pl.nsLister = h.SharedInformerFactory().Core().V1().Namespaces().Lister()
+		// FIXME avoid k8s source code modifications
+		//pl.nsLister = h.SharedInformerFactory().Core().V1().Namespaces().Lister()
+		// TODO specify namespaces outside k8s source code
+		pl.nsLister = staticnslister.NewStaticNsLister("global-namespace", "other-namespace")
 	}
 	return pl, nil
 }
