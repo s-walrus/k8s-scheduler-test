@@ -34,15 +34,18 @@ func NewTestPod(name string) *v1.Pod {
 		Spec: v1.PodSpec{
 			Affinity: &v1.Affinity{
 				PodAntiAffinity: &v1.PodAntiAffinity{
-					RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
+					PreferredDuringSchedulingIgnoredDuringExecution: []v1.WeightedPodAffinityTerm{
 						{
-							LabelSelector: &metav1.LabelSelector{
-								MatchLabels:      map[string]string{"anti-affinity-group": "1"},
-								MatchExpressions: []metav1.LabelSelectorRequirement{},
+							Weight: 100,
+							PodAffinityTerm: v1.PodAffinityTerm{
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels:      map[string]string{"anti-affinity-group": "1"},
+									MatchExpressions: []metav1.LabelSelectorRequirement{},
+								},
+								Namespaces:        []string{"global-namespace"},
+								TopologyKey:       "name",
+								NamespaceSelector: nil,
 							},
-							Namespaces:        []string{"global-namespace"},
-							TopologyKey:       "name",
-							NamespaceSelector: nil,
 						},
 					},
 				},
