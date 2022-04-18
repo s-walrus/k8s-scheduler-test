@@ -93,6 +93,7 @@ func EvalSchedulerDemo() []pretender.StateSnapshot {
 	snapshot := scheduler.NewSnapshot()
 	sched := scheduler.CreateTestScheduler(ctx, snapshot)
 	fwk := scheduler.NewTestFramework(&ps, snapshot)
+	var ret []pretender.StateSnapshot
 
 	addNode(ctx, fwk, sched, NewTestNode("My node #1"))
 	addNode(ctx, fwk, sched, NewTestNode("My node #2"))
@@ -105,13 +106,24 @@ func EvalSchedulerDemo() []pretender.StateSnapshot {
 	}
 	for _, pod := range pods {
 		scheduler.SchedulePodWithTraits(sched, fwk, &ps, pod, podtraits.AffectNodeCount{})
+		ret = append(ret, ps.GetSnapshot())
 	}
 
-	return []pretender.StateSnapshot{ps.GetSnapshot()}
+	return ret
+}
+
+func PrintTestResult(snapshots []pretender.StateSnapshot) {
+	for _, s := range snapshots {
+		fmt.Println("{")
+		for node, state := range s {
+			fmt.Printf("\t%s: { nodeCount: %d }\n", node, state.NodeCount)
+		}
+		fmt.Println("},")
+	}
 }
 
 func main() {
 	InitLogs()
 
-	fmt.Println(EvalSchedulerDemo()[0]["my node"])
+	PrintTestResult(EvalSchedulerDemo())
 }
