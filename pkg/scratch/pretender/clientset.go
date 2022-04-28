@@ -282,6 +282,6 @@ func (c Clientset) StorageV1alpha1() storagev1alpha1.StorageV1alpha1Interface {
 	panic("implement me")
 }
 
-func NewClientset(ps *State) *Clientset {
+func NewClientset(ps *StateManager) *Clientset {
 	return &Clientset{NewPretenderCoreV1(ps)}
 }

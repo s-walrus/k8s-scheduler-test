@@ -97,7 +97,7 @@ func (c CoreV1) ServiceAccounts(namespace string) v1.ServiceAccountInterface {
 	panic("implement me")
 }
 
-func NewPretenderCoreV1(ps *State) *CoreV1 {
+func NewPretenderCoreV1(ps *StateManager) *CoreV1 {
 	return &CoreV1{
 		pods:  NewPods(ps),
 		nodes: NewNodes(ps),

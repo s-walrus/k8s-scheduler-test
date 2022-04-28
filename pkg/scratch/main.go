@@ -82,17 +82,29 @@ func addNode(ctx context.Context, fwk framework.Framework, sched *scheduler.Sche
 	_, err := fwk.ClientSet().CoreV1().Nodes().Create(ctx, node, metav1.CreateOptions{})
 	if err != nil {
 		panic(err)
-	} else {
-		sched.SchedulerCache.AddNode(node)
+	}
+}
+
+func SchedulePodWithTraits(sched *scheduler.Scheduler, fwk framework.Framework, ps *pretender.StateManager, pod *v1.Pod, traits ...pretender.PodTrait) {
+	ok := ps.PrepareTraits(traits)
+	if !ok {
+		panic("prepare traits error")
+	}
+
+	ctx := context.Background()
+	scheduler.FakeScheduleOne(ctx, sched, fwk, pod)
+
+	if ps.PopPreparedTraits() != nil {
+		panic("prepare traits error to be expected")
 	}
 }
 
 func EvalSchedulerDemo() []pretender.StateSnapshot {
 	ctx := context.Background()
-	ps := pretender.NewState()
 	snapshot := scheduler.NewSnapshot()
 	sched := scheduler.CreateTestScheduler(ctx, snapshot)
-	fwk := scheduler.NewTestFramework(&ps, snapshot)
+	ps := pretender.NewStateManager(sched)
+	fwk := scheduler.NewTestFramework(pretender.NewClientset(&ps), snapshot)
 	var ret []pretender.StateSnapshot
 
 	addNode(ctx, fwk, sched, NewTestNode("My node #1"))
@@ -105,7 +117,7 @@ func EvalSchedulerDemo() []pretender.StateSnapshot {
 		pods = append(pods, NewTestPod(fmt.Sprintf("pod%d", i)))
 	}
 	for _, pod := range pods {
-		scheduler.SchedulePodWithTraits(sched, fwk, &ps, pod, podtraits.AffectNodeCount{})
+		SchedulePodWithTraits(sched, fwk, &ps, pod, podtraits.AffectNodeCount{})
 		ret = append(ret, ps.GetSnapshot())
 	}
 

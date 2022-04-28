@@ -11,12 +11,12 @@ import (
 )
 
 type Nodes struct {
-	ps     *State
+	ps     *StateManager
 	client clientset.Interface
 }
 
 func (c Nodes) Create(ctx context.Context, node *v1.Node, opts metav1.CreateOptions) (*v1.Node, error) {
-	err := c.ps.AddNode(NewNodeState(node))
+	err := c.ps.AddNode(node)
 	//c.sched.SchedulerCache.AddNode(node)
 	return node, err
 }
@@ -76,7 +76,7 @@ func (Nodes) PatchStatus(ctx context.Context, nodeName string, data []byte) (*v1
 	panic("implement me")
 }
 
-func NewNodes(ps *State) *Nodes {
+func NewNodes(ps *StateManager) *Nodes {
 	return &Nodes{
 		ps: ps,
 	}

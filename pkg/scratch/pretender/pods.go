@@ -14,7 +14,7 @@ import (
 )
 
 type Pods struct {
-	ps     *State
+	ps     *StateManager
 	client clientset.Interface
 }
 
@@ -112,7 +112,7 @@ func (c Pods) ProxyGet(scheme, name, port, path string, params map[string]string
 	panic("implement me")
 }
 
-func NewPods(ps *State) *Pods {
+func NewPods(ps *StateManager) *Pods {
 	return &Pods{
 		ps: ps,
 	}

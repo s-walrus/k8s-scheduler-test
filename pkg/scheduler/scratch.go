@@ -6,6 +6,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
+	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/apis/config"
@@ -13,13 +14,13 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/defaultbinder"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/feature"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/interpodaffinity"
+	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/noderesources"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/queuesort"
 	frameworkruntime "k8s.io/kubernetes/pkg/scheduler/framework/runtime"
 	internalcache "k8s.io/kubernetes/pkg/scheduler/internal/cache"
 	internalqueue "k8s.io/kubernetes/pkg/scheduler/internal/queue"
 	"k8s.io/kubernetes/pkg/scheduler/metrics"
 	st "k8s.io/kubernetes/pkg/scheduler/testing"
-	"k8s.io/kubernetes/pkg/scratch/pretender"
 	"time"
 )
 
@@ -58,12 +59,23 @@ func NewInterPodAffinity(plArgs runtime.Object, h framework.Handle) (framework.P
 	})
 }
 
-func NewTestFramework(ps *pretender.State, snapshot *internalcache.Snapshot) framework.Framework {
-	cs := pretender.NewClientset(ps)
+func NewBalancedAllocation(plArgs runtime.Object, h framework.Handle) (framework.Plugin, error) {
+	return noderesources.NewBalancedAllocation(plArgs, h, feature.Features{
+		EnablePodAffinityNamespaceSelector: true,
+		EnablePodDisruptionBudget:          false,
+		EnablePodOverhead:                  false,
+		EnableReadWriteOncePod:             false,
+		EnableVolumeCapacityPriority:       false,
+		EnableCSIStorageCapacity:           false,
+	})
+}
+
+func NewTestFramework(cs clientset.Interface, snapshot *internalcache.Snapshot) framework.Framework {
 	fwk, err := st.NewFramework(
 		[]st.RegisterPluginFunc{
 			st.RegisterQueueSortPlugin(queuesort.Name, queuesort.New),
 			st.RegisterPluginAsExtensions(interpodaffinity.Name, NewInterPodAffinity, "PreFilter", "Filter", "PreScore", "Score"),
+			st.RegisterPluginAsExtensions(noderesources.BalancedAllocationName, NewBalancedAllocation, "Score"),
 			st.RegisterFilterPlugin("TrueFilter", st.NewTrueFilterPlugin),
 			st.RegisterBindPlugin(defaultbinder.Name, defaultbinder.New),
 		},
@@ -80,22 +92,8 @@ func NewTestFramework(ps *pretender.State, snapshot *internalcache.Snapshot) fra
 	return fwk
 }
 
-func SchedulePodWithTraits(sched *Scheduler, fwk framework.Framework, ps *pretender.State, pod *v1.Pod, traits ...pretender.PodTrait) {
-	ok := ps.PrepareTraits(traits)
-	if !ok {
-		panic("prepare traits error")
-	}
-
-	ctx := context.Background()
-	fakeScheduleOne(ctx, sched, fwk, pod)
-
-	if ps.PopPreparedTraits() != nil {
-		panic("prepare traits error to be expected")
-	}
-}
-
-// fakeScheduleOne must be as similar as possible to the original ScheduleOne implementation
-func fakeScheduleOne(ctx context.Context, sched *Scheduler, fwk framework.Framework, pod *v1.Pod) {
+// FakeScheduleOne must be as similar as possible to the original ScheduleOne implementation
+func FakeScheduleOne(ctx context.Context, sched *Scheduler, fwk framework.Framework, pod *v1.Pod) {
 	//podInfo := sched.NextPod()
 	podInfo := &framework.QueuedPodInfo{
 		PodInfo: &framework.PodInfo{
