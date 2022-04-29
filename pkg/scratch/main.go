@@ -15,41 +15,71 @@ import (
 	"k8s.io/kubernetes/pkg/scratch/pretender/podtraits"
 )
 
+type PodWithTraits struct {
+	pod    *v1.Pod
+	traits []pretender.PodTrait
+}
+
 func InitLogs() {
 	klog.InitFlags(nil)
 	flag.Parse()
 }
 
-func NewTestPod(name string) *v1.Pod {
-	return &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			UID:       types.UID(name),
-			Namespace: "global-namespace",
-			Labels: map[string]string{
-				"name":                name,
-				"anti-affinity-group": "1",
+func NewAntiAffinityPod(name string) PodWithTraits {
+	return PodWithTraits{
+		pod: &v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				UID:       types.UID(name),
+				Namespace: "global-namespace",
+				Labels: map[string]string{
+					"name":                name,
+					"anti-affinity-group": "1",
+				},
 			},
-		},
-		Spec: v1.PodSpec{
-			Affinity: &v1.Affinity{
-				PodAntiAffinity: &v1.PodAntiAffinity{
-					PreferredDuringSchedulingIgnoredDuringExecution: []v1.WeightedPodAffinityTerm{
-						{
-							Weight: 100,
-							PodAffinityTerm: v1.PodAffinityTerm{
-								LabelSelector: &metav1.LabelSelector{
-									MatchLabels:      map[string]string{"anti-affinity-group": "1"},
-									MatchExpressions: []metav1.LabelSelectorRequirement{},
+			Spec: v1.PodSpec{
+				Affinity: &v1.Affinity{
+					PodAntiAffinity: &v1.PodAntiAffinity{
+						PreferredDuringSchedulingIgnoredDuringExecution: []v1.WeightedPodAffinityTerm{
+							{
+								Weight: 100,
+								PodAffinityTerm: v1.PodAffinityTerm{
+									LabelSelector: &metav1.LabelSelector{
+										MatchLabels:      map[string]string{"anti-affinity-group": "1"},
+										MatchExpressions: []metav1.LabelSelectorRequirement{},
+									},
+									Namespaces:        []string{"global-namespace"},
+									TopologyKey:       "name",
+									NamespaceSelector: nil,
 								},
-								Namespaces:        []string{"global-namespace"},
-								TopologyKey:       "name",
-								NamespaceSelector: nil,
 							},
 						},
 					},
 				},
 			},
+		},
+		traits: []pretender.PodTrait{
+			podtraits.AffectNodeCount{},
+		},
+	}
+}
+
+func NewResourceRequestingPod(name string) PodWithTraits {
+	return PodWithTraits{
+		pod: &v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				UID:       types.UID(name),
+				Namespace: "global-namespace",
+				Labels: map[string]string{
+					"name": name,
+				},
+			},
+		},
+		traits: []pretender.PodTrait{
+			podtraits.AffectNodeCount{},
+			podtraits.RequestMemory{Request: 1024},
+			podtraits.RequestCPU{Request: 4096},
 		},
 	}
 }
@@ -85,14 +115,14 @@ func addNode(ctx context.Context, fwk framework.Framework, sched *scheduler.Sche
 	}
 }
 
-func SchedulePodWithTraits(sched *scheduler.Scheduler, fwk framework.Framework, ps *pretender.StateManager, pod *v1.Pod, traits ...pretender.PodTrait) {
-	ok := ps.PrepareTraits(traits)
+func SchedulePodWithTraits(sched *scheduler.Scheduler, fwk framework.Framework, ps *pretender.StateManager, pod PodWithTraits) {
+	ok := ps.PrepareTraits(pod.traits)
 	if !ok {
 		panic("prepare traits error")
 	}
 
 	ctx := context.Background()
-	scheduler.FakeScheduleOne(ctx, sched, fwk, pod)
+	scheduler.FakeScheduleOne(ctx, sched, fwk, pod.pod)
 
 	if ps.PopPreparedTraits() != nil {
 		panic("prepare traits error to be expected")
@@ -105,6 +135,10 @@ func EvalSchedulerDemo() []pretender.StateSnapshot {
 	sched := scheduler.CreateTestScheduler(ctx, snapshot)
 	ps := pretender.NewStateManager(sched)
 	fwk := scheduler.NewTestFramework(pretender.NewClientset(&ps), snapshot)
+	err := ps.SetFramework(fwk)
+	if err != nil {
+		panic(err)
+	}
 	var ret []pretender.StateSnapshot
 
 	addNode(ctx, fwk, sched, NewTestNode("My node #1"))
@@ -112,12 +146,12 @@ func EvalSchedulerDemo() []pretender.StateSnapshot {
 	addNode(ctx, fwk, sched, NewTestNode("My node #3"))
 
 	// schedule some pods
-	var pods []*v1.Pod
+	var pods []PodWithTraits
 	for i := 0; i < 16; i++ {
-		pods = append(pods, NewTestPod(fmt.Sprintf("pod%d", i)))
+		pods = append(pods, NewResourceRequestingPod(fmt.Sprintf("pod%d", i)))
 	}
 	for _, pod := range pods {
-		SchedulePodWithTraits(sched, fwk, &ps, pod, podtraits.AffectNodeCount{})
+		SchedulePodWithTraits(sched, fwk, &ps, pod)
 		ret = append(ret, ps.GetSnapshot())
 	}
 
@@ -128,7 +162,13 @@ func PrintTestResult(snapshots []pretender.StateSnapshot) {
 	for _, s := range snapshots {
 		fmt.Println("{")
 		for node, state := range s {
-			fmt.Printf("\t%s: { nodeCount: %d }\n", node, state.NodeCount)
+			fmt.Printf(
+				"\t%s: { cnt: %d, mem: %d, cpu: %d }\n",
+				node,
+				state.NodeCount,
+				state.MemoryRequested,
+				state.MilliCPURequested,
+			)
 		}
 		fmt.Println("},")
 	}

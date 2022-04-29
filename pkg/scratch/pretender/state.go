@@ -43,6 +43,14 @@ type State struct {
 	preparedTraits []PodTrait
 }
 
+func (c *State) GetNodeSnapshot(nodeName string) (*NodeSnapshot, error) {
+	ns, err := c.GetNodeState(nodeName)
+	if err != nil {
+		return nil, err
+	}
+	return makeNodeSnapshot(ns), nil
+}
+
 func (c *State) GetSnapshot() StateSnapshot {
 	snapshot := StateSnapshot{}
 	for nodeName, nodeState := range c.nodes {
@@ -51,12 +59,20 @@ func (c *State) GetSnapshot() StateSnapshot {
 	return snapshot
 }
 
-func (c *State) GetNode(name string) (*v1.Node, error) {
+func (c *State) GetNodeState(name string) (*nodeState, error) {
 	node, prs := c.nodes[name]
 	if !prs {
 		return nil, errors.New("no node with name '" + name + "' found")
 	}
-	return node.v1Node, nil
+	return node, nil
+}
+
+func (c *State) GetNode(name string) (*v1.Node, error) {
+	ns, err := c.GetNodeState(name)
+	if err != nil {
+		return nil, err
+	}
+	return ns.v1Node, nil
 }
 
 func (c *State) PrepareTraits(traits []PodTrait) bool {

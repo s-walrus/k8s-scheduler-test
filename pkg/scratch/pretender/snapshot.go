@@ -1,7 +1,9 @@
 package pretender
 
 type NodeSnapshot struct {
-	NodeCount int
+	NodeCount         int
+	MilliCPURequested int64
+	MemoryRequested   int64
 }
 
 func newEmptyNodeSnapshot(state *nodeState) *NodeSnapshot {
@@ -10,6 +12,7 @@ func newEmptyNodeSnapshot(state *nodeState) *NodeSnapshot {
 	}
 }
 
+// FIXME is functional style ok?
 func makeNodeSnapshot(state *nodeState) *NodeSnapshot {
 	snapshot := newEmptyNodeSnapshot(state)
 	for _, traits := range state.pods {

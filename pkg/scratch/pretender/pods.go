@@ -15,7 +15,7 @@ import (
 
 type Pods struct {
 	ps     *StateManager
-	client clientset.Interface
+	client clientset.Interface // FIXME do i need clientset here? also in Nodes
 }
 
 func (c Pods) Create(ctx context.Context, pod *v1.Pod, opts metav1.CreateOptions) (*v1.Pod, error) {
