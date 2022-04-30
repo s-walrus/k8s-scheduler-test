@@ -70,11 +70,57 @@ func NewResourceRequestingPod(name string) pretender.PodWithTraits {
 					"name": name,
 				},
 			},
+			Spec: v1.PodSpec{
+				Containers: []v1.Container{
+					{
+						Resources: v1.ResourceRequirements{
+							Limits: nil,
+							Requests: v1.ResourceList{
+								v1.ResourceMemory: *resource.NewQuantity(1024, resource.DecimalSI),
+								v1.ResourceCPU:    *resource.NewQuantity(4, resource.DecimalSI),
+							},
+						},
+					},
+				},
+			},
 		},
 		Traits: []pretender.PodTrait{
 			podtraits.AffectNodeCount{},
 			podtraits.RequestMemory{Request: 1024},
-			podtraits.RequestCPU{Request: 4096},
+			podtraits.RequestCPU{Request: 4000},
+		},
+	}
+}
+
+func NewLargeResourceRequestingPod(name string) pretender.PodWithTraits {
+	return pretender.PodWithTraits{
+		Pod: &v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				UID:       types.UID(name),
+				Namespace: "global-namespace",
+				Labels: map[string]string{
+					"name": name,
+				},
+			},
+			Spec: v1.PodSpec{
+				Containers: []v1.Container{
+					{
+						Resources: v1.ResourceRequirements{
+							Limits: nil,
+							Requests: v1.ResourceList{
+								v1.ResourceMemory: *resource.NewQuantity(102400, resource.DecimalSI),
+								v1.ResourceCPU:    *resource.NewQuantity(400, resource.DecimalSI),
+							},
+						},
+					},
+				},
+			},
+		},
+		Traits: []pretender.PodTrait{
+			podtraits.AffectNodeCount{},
+			podtraits.RequestMemory{Request: 102400},
+			podtraits.RequestCPU{Request: 400000},
 		},
 	}
 }
@@ -135,6 +181,7 @@ func EvalSchedulerDemo() []pretender.StateSnapshot {
 
 	// schedule some pods
 	var pods []pretender.PodWithTraits
+	pods = append(pods, NewLargeResourceRequestingPod("special pod"))
 	for i := 0; i < 16; i++ {
 		pods = append(pods, NewResourceRequestingPod(fmt.Sprintf("pod%d", i)))
 	}

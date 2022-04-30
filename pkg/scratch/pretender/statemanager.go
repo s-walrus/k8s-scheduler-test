@@ -32,11 +32,16 @@ func (c *StateManager) Bind(nodeName string, podUID types.UID) error {
 		return errors.New("no pod with given UID in cache")
 	}
 	err := c.ps.Bind(nodeName, podUID, pwt.Traits)
+	if err == nil {
+		pwt.Pod.Spec.NodeName = nodeName
+		node, err := c.fwk.SnapshotSharedLister().NodeInfos().Get(nodeName)
+		if err != nil {
+			panic(err)
+		}
+		node.Requested.MilliCPU = 1
+		node.Requested.Memory = 1
+	}
 	//if err == nil {
-	//	snapshot, err := c.ps.GetNodeSnapshot(nodeName)
-	//	if err != nil {
-	//		panic(err)
-	//	}
 	//	node, err := c.fwk.SnapshotSharedLister().NodeInfos().Get(nodeName)
 	//	if err != nil {
 	//		panic(err)
