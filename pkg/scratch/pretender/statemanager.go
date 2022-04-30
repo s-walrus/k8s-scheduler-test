@@ -13,6 +13,9 @@ type StateManager struct {
 	ps    State
 	sched *scheduler.Scheduler
 	fwk   framework.Framework
+
+	// FIXME remove unused pods from cache
+	podCache map[types.UID]PodWithTraits
 }
 
 func (c *StateManager) GetSnapshot() StateSnapshot {
@@ -23,29 +26,28 @@ func (c *StateManager) GetNode(name string) (*v1.Node, error) {
 	return c.ps.GetNode(name)
 }
 
-func (c *StateManager) PrepareTraits(traits []PodTrait) bool {
-	return c.ps.PrepareTraits(traits)
-}
-
-func (c *StateManager) PopPreparedTraits() []PodTrait {
-	return c.ps.PopPreparedTraits()
-}
-
 func (c *StateManager) Bind(nodeName string, podUID types.UID) error {
-	err := c.ps.Bind(nodeName, podUID)
-	if err == nil {
-		snapshot, err := c.ps.GetNodeSnapshot(nodeName)
-		if err != nil {
-			panic(err)
-		}
-		node, err := c.fwk.SnapshotSharedLister().NodeInfos().Get(nodeName)
-		if err != nil {
-			panic(err)
-		}
-		node.Requested.MilliCPU = snapshot.MilliCPURequested
-		node.Requested.Memory = snapshot.MemoryRequested
-		// TODO try not calling fwk.Snapshot... and change ns.v1Node instead (is it the same object?)
+	pwt, ok := c.podCache[podUID]
+	if !ok {
+		return errors.New("no pod with given UID in cache")
 	}
+	err := c.ps.Bind(nodeName, podUID, pwt.Traits)
+	//if err == nil {
+	//	snapshot, err := c.ps.GetNodeSnapshot(nodeName)
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//	node, err := c.fwk.SnapshotSharedLister().NodeInfos().Get(nodeName)
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//	node.Requested.MilliCPU = snapshot.MilliCPURequested
+	//	node.Requested.Memory = snapshot.MemoryRequested
+	//	err := c.sched.SchedulerCache.AddPod(pod.pod)
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//}
 	return err
 }
 
@@ -55,6 +57,11 @@ func (c *StateManager) AddNode(node *v1.Node) error {
 		c.sched.SchedulerCache.AddNode(node)
 	}
 	return err
+}
+
+// AddOrUpdatePod adds pod to cache or updates existing pod with same UID
+func (c *StateManager) AddOrUpdatePod(pt PodWithTraits) {
+	c.podCache[pt.Pod.UID] = pt
 }
 
 func (c *StateManager) SetFramework(framework framework.Framework) error {
@@ -67,8 +74,9 @@ func (c *StateManager) SetFramework(framework framework.Framework) error {
 
 func NewStateManager(scheduler *scheduler.Scheduler) StateManager {
 	return StateManager{
-		ps:    NewState(),
-		sched: scheduler,
-		fwk:   nil,
+		ps:       NewState(),
+		sched:    scheduler,
+		fwk:      nil,
+		podCache: map[types.UID]PodWithTraits{},
 	}
 }

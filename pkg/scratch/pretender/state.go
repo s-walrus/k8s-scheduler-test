@@ -11,6 +11,11 @@ type PodTrait interface {
 	Apply(snapshot *NodeSnapshot)
 }
 
+type PodWithTraits struct {
+	Pod    *v1.Pod
+	Traits []PodTrait
+}
+
 type nodeState struct {
 	v1Node      *v1.Node
 	name        string
@@ -39,8 +44,7 @@ func NewNodeState(node *v1.Node) *nodeState {
 }
 
 type State struct {
-	nodes          map[string]*nodeState
-	preparedTraits []PodTrait
+	nodes map[string]*nodeState
 }
 
 func (c *State) GetNodeSnapshot(nodeName string) (*NodeSnapshot, error) {
@@ -75,32 +79,13 @@ func (c *State) GetNode(name string) (*v1.Node, error) {
 	return ns.v1Node, nil
 }
 
-func (c *State) PrepareTraits(traits []PodTrait) bool {
-	ok := c.preparedTraits == nil
-	c.preparedTraits = traits
-	return ok
-}
-
-func (c *State) PopPreparedTraits() []PodTrait {
-	ret := c.preparedTraits
-	c.preparedTraits = nil
-	return ret
-}
-
-func (c *State) Bind(nodeName string, podUID types.UID) error {
-	traits := c.PopPreparedTraits()
-	if traits == nil {
-		return errors.New("traits must be prepared before binding")
-	}
-
-	node, prs := c.nodes[nodeName]
-	if !prs {
+func (c *State) Bind(nodeName string, podUID types.UID, traits []PodTrait) error {
+	node, ok := c.nodes[nodeName]
+	if !ok {
 		return errors.New("no node with name '" + nodeName + "' found")
 	}
 
-	// assuming all UIDs are unique
 	node.pods[podUID] = traits
-
 	return nil
 }
 
@@ -117,7 +102,6 @@ func (c *State) AddNode(node *nodeState) error {
 
 func NewState() State {
 	return State{
-		nodes:          make(map[string]*nodeState),
-		preparedTraits: nil,
+		nodes: make(map[string]*nodeState),
 	}
 }

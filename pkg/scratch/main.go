@@ -15,19 +15,14 @@ import (
 	"k8s.io/kubernetes/pkg/scratch/pretender/podtraits"
 )
 
-type PodWithTraits struct {
-	pod    *v1.Pod
-	traits []pretender.PodTrait
-}
-
 func InitLogs() {
 	klog.InitFlags(nil)
 	flag.Parse()
 }
 
-func NewAntiAffinityPod(name string) PodWithTraits {
-	return PodWithTraits{
-		pod: &v1.Pod{
+func NewAntiAffinityPod(name string) pretender.PodWithTraits {
+	return pretender.PodWithTraits{
+		Pod: &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
 				UID:       types.UID(name),
@@ -58,15 +53,15 @@ func NewAntiAffinityPod(name string) PodWithTraits {
 				},
 			},
 		},
-		traits: []pretender.PodTrait{
+		Traits: []pretender.PodTrait{
 			podtraits.AffectNodeCount{},
 		},
 	}
 }
 
-func NewResourceRequestingPod(name string) PodWithTraits {
-	return PodWithTraits{
-		pod: &v1.Pod{
+func NewResourceRequestingPod(name string) pretender.PodWithTraits {
+	return pretender.PodWithTraits{
+		Pod: &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
 				UID:       types.UID(name),
@@ -76,7 +71,7 @@ func NewResourceRequestingPod(name string) PodWithTraits {
 				},
 			},
 		},
-		traits: []pretender.PodTrait{
+		Traits: []pretender.PodTrait{
 			podtraits.AffectNodeCount{},
 			podtraits.RequestMemory{Request: 1024},
 			podtraits.RequestCPU{Request: 4096},
@@ -115,18 +110,11 @@ func addNode(ctx context.Context, fwk framework.Framework, sched *scheduler.Sche
 	}
 }
 
-func SchedulePodWithTraits(sched *scheduler.Scheduler, fwk framework.Framework, ps *pretender.StateManager, pod PodWithTraits) {
-	ok := ps.PrepareTraits(pod.traits)
-	if !ok {
-		panic("prepare traits error")
-	}
+func SchedulePodWithTraits(sched *scheduler.Scheduler, fwk framework.Framework, ps *pretender.StateManager, pod pretender.PodWithTraits) {
+	ps.AddOrUpdatePod(pod)
 
 	ctx := context.Background()
-	scheduler.FakeScheduleOne(ctx, sched, fwk, pod.pod)
-
-	if ps.PopPreparedTraits() != nil {
-		panic("prepare traits error to be expected")
-	}
+	scheduler.FakeScheduleOne(ctx, sched, fwk, pod.Pod)
 }
 
 func EvalSchedulerDemo() []pretender.StateSnapshot {
@@ -146,7 +134,7 @@ func EvalSchedulerDemo() []pretender.StateSnapshot {
 	addNode(ctx, fwk, sched, NewTestNode("My node #3"))
 
 	// schedule some pods
-	var pods []PodWithTraits
+	var pods []pretender.PodWithTraits
 	for i := 0; i < 16; i++ {
 		pods = append(pods, NewResourceRequestingPod(fmt.Sprintf("pod%d", i)))
 	}
