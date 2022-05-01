@@ -34,25 +34,7 @@ func (c *StateManager) Bind(nodeName string, podUID types.UID) error {
 	err := c.ps.Bind(nodeName, podUID, pwt.Traits)
 	if err == nil {
 		pwt.Pod.Spec.NodeName = nodeName
-		node, err := c.fwk.SnapshotSharedLister().NodeInfos().Get(nodeName)
-		if err != nil {
-			panic(err)
-		}
-		node.Requested.MilliCPU = 1
-		node.Requested.Memory = 1
 	}
-	//if err == nil {
-	//	node, err := c.fwk.SnapshotSharedLister().NodeInfos().Get(nodeName)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	node.Requested.MilliCPU = snapshot.MilliCPURequested
-	//	node.Requested.Memory = snapshot.MemoryRequested
-	//	err := c.sched.SchedulerCache.AddPod(pod.pod)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//}
 	return err
 }
 
