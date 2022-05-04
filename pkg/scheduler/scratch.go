@@ -4,18 +4,12 @@ import (
 	"context"
 	"fmt"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/apis/config"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
-	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/defaultbinder"
-	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/feature"
-	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/interpodaffinity"
-	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/noderesources"
-	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/queuesort"
 	frameworkruntime "k8s.io/kubernetes/pkg/scheduler/framework/runtime"
 	internalcache "k8s.io/kubernetes/pkg/scheduler/internal/cache"
 	internalqueue "k8s.io/kubernetes/pkg/scheduler/internal/queue"
@@ -48,37 +42,9 @@ func CreateTestScheduler(ctx context.Context, snapshot *internalcache.Snapshot) 
 	return &sched
 }
 
-func NewInterPodAffinity(plArgs runtime.Object, h framework.Handle) (framework.Plugin, error) {
-	return interpodaffinity.New(plArgs, h, feature.Features{
-		EnablePodAffinityNamespaceSelector: true,
-		EnablePodDisruptionBudget:          false,
-		EnablePodOverhead:                  false,
-		EnableReadWriteOncePod:             false,
-		EnableVolumeCapacityPriority:       false,
-		EnableCSIStorageCapacity:           false,
-	})
-}
-
-func NewBalancedAllocation(plArgs runtime.Object, h framework.Handle) (framework.Plugin, error) {
-	return noderesources.NewBalancedAllocation(plArgs, h, feature.Features{
-		EnablePodAffinityNamespaceSelector: true,
-		EnablePodDisruptionBudget:          false,
-		EnablePodOverhead:                  false,
-		EnableReadWriteOncePod:             false,
-		EnableVolumeCapacityPriority:       false,
-		EnableCSIStorageCapacity:           false,
-	})
-}
-
-func NewTestFramework(cs clientset.Interface, snapshot *internalcache.Snapshot) framework.Framework {
+func NewTestFramework(cs clientset.Interface, snapshot *internalcache.Snapshot, plugins []st.RegisterPluginFunc) framework.Framework {
 	fwk, err := st.NewFramework(
-		[]st.RegisterPluginFunc{
-			st.RegisterQueueSortPlugin(queuesort.Name, queuesort.New),
-			st.RegisterPluginAsExtensions(interpodaffinity.Name, NewInterPodAffinity, "PreFilter", "Filter", "PreScore", "Score"),
-			st.RegisterPluginAsExtensions(noderesources.BalancedAllocationName, NewBalancedAllocation, "Score"),
-			st.RegisterFilterPlugin("TrueFilter", st.NewTrueFilterPlugin),
-			st.RegisterBindPlugin(defaultbinder.Name, defaultbinder.New),
-		},
+		plugins,
 		"",
 		frameworkruntime.WithPodNominator(internalqueue.NewPodNominator(nil)),
 		frameworkruntime.WithClientSet(cs),
