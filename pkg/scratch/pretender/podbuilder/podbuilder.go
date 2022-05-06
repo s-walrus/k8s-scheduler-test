@@ -15,7 +15,7 @@ type PodBuilder struct {
 	builtPodsCnt int
 }
 
-func (c *PodBuilder) Get() pretender.PodWithTraits {
+func (c *PodBuilder) GetPod() pretender.PodWithTraits {
 	podClone := c.pod.Pod.DeepCopy()
 	podName := fmt.Sprintf("%s%d", podClone.ObjectMeta.Name, c.builtPodsCnt)
 	podClone.ObjectMeta.Name = podName
@@ -39,6 +39,47 @@ func (c *PodBuilder) SetCPURequest(value int64) *PodBuilder {
 	return c
 }
 
+func (c *PodBuilder) AddRequiredPodAntiAffinity(matchLabels map[string]string) *PodBuilder {
+	c.pod.Pod.Spec.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution =
+		append(c.pod.Pod.Spec.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution,
+			newPodAffinityTerm(matchLabels))
+	return c
+}
+
+func (c *PodBuilder) AddPreferredPodAntiAffinity(matchLabels map[string]string) *PodBuilder {
+	c.pod.Pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution =
+		append(c.pod.Pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution,
+			v1.WeightedPodAffinityTerm{
+				Weight:          100,
+				PodAffinityTerm: newPodAffinityTerm(matchLabels),
+			},
+		)
+	return c
+}
+
+func (c *PodBuilder) AddRequiredPodAffinity(matchLabels map[string]string) *PodBuilder {
+	c.pod.Pod.Spec.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution =
+		append(c.pod.Pod.Spec.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution,
+			newPodAffinityTerm(matchLabels))
+	return c
+}
+
+func (c *PodBuilder) AddPreferredPodAffinity(matchLabels map[string]string) *PodBuilder {
+	c.pod.Pod.Spec.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution =
+		append(c.pod.Pod.Spec.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution,
+			v1.WeightedPodAffinityTerm{
+				Weight:          100,
+				PodAffinityTerm: newPodAffinityTerm(matchLabels),
+			},
+		)
+	return c
+}
+
+func (c *PodBuilder) SetLabel(name, value string) *PodBuilder {
+	c.pod.Pod.ObjectMeta.Labels[name] = value
+	return c
+}
+
 func NewPodBuilder(name string) *PodBuilder {
 	return &PodBuilder{
 		pod: pretender.PodWithTraits{
@@ -47,13 +88,15 @@ func NewPodBuilder(name string) *PodBuilder {
 					Name:      name,
 					UID:       "",
 					Namespace: "global-namespace",
-					Labels:    map[string]string{},
+					Labels: map[string]string{
+						"name": name,
+					},
 				},
 				Spec: v1.PodSpec{
 					Affinity: &v1.Affinity{
-						NodeAffinity:    nil,
-						PodAffinity:     nil,
-						PodAntiAffinity: nil,
+						NodeAffinity:    &v1.NodeAffinity{},
+						PodAffinity:     &v1.PodAffinity{},
+						PodAntiAffinity: &v1.PodAntiAffinity{},
 					},
 					Containers: []v1.Container{
 						{
@@ -69,5 +112,17 @@ func NewPodBuilder(name string) *PodBuilder {
 				podtraits.AffectNodeCount{},
 			},
 		},
+	}
+}
+
+func newPodAffinityTerm(matchLabels map[string]string) v1.PodAffinityTerm {
+	return v1.PodAffinityTerm{
+		LabelSelector: &metav1.LabelSelector{
+			MatchLabels:      matchLabels,
+			MatchExpressions: []metav1.LabelSelectorRequirement{},
+		},
+		Namespaces:        []string{"global-namespace"},
+		TopologyKey:       "name",
+		NamespaceSelector: nil,
 	}
 }

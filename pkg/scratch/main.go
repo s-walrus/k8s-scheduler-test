@@ -20,51 +20,11 @@ import (
 	st "k8s.io/kubernetes/pkg/scheduler/testing"
 	"k8s.io/kubernetes/pkg/scratch/pretender"
 	"k8s.io/kubernetes/pkg/scratch/pretender/podbuilder"
-	"k8s.io/kubernetes/pkg/scratch/pretender/podtraits"
 )
 
 func InitLogs() {
 	klog.InitFlags(nil)
 	flag.Parse()
-}
-
-func NewAntiAffinityPod(name string) pretender.PodWithTraits {
-	return pretender.PodWithTraits{
-		Pod: &v1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				UID:       types.UID(name),
-				Namespace: "global-namespace",
-				Labels: map[string]string{
-					"name":                name,
-					"anti-affinity-group": "1",
-				},
-			},
-			Spec: v1.PodSpec{
-				Affinity: &v1.Affinity{
-					PodAntiAffinity: &v1.PodAntiAffinity{
-						PreferredDuringSchedulingIgnoredDuringExecution: []v1.WeightedPodAffinityTerm{
-							{
-								Weight: 100,
-								PodAffinityTerm: v1.PodAffinityTerm{
-									LabelSelector: &metav1.LabelSelector{
-										MatchLabels:      map[string]string{"anti-affinity-group": "1"},
-										MatchExpressions: []metav1.LabelSelectorRequirement{},
-									},
-									Namespaces:        []string{"global-namespace"},
-									TopologyKey:       "name",
-									NamespaceSelector: nil,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		Traits: []pretender.PodTrait{
-			podtraits.AffectNodeCount{},
-		},
-	}
 }
 
 func NewTestNode(name string) *v1.Node {
@@ -150,14 +110,14 @@ func EvalSchedulerDemo() []pretender.StateSnapshot {
 	addNode(ctx, fwk, NewTestNode("My node #2"))
 	addNode(ctx, fwk, NewTestNode("My node #3"))
 
-	basicPodBuilder := podbuilder.NewPodBuilder("basic").SetCPURequest(4).SetMemoryRequest(1 << 10)
-	largePodBuilder := podbuilder.NewPodBuilder("basic").SetCPURequest(32).SetMemoryRequest(1 << 20)
+	selfAntiAffinityPodBuilder := podbuilder.NewPodBuilder("balanced")
+	selfAntiAffinityPodBuilder.SetLabel("anti-affinity-group", "1")
+	selfAntiAffinityPodBuilder.AddPreferredPodAntiAffinity(map[string]string{"anti-affinity-group": "1"})
 
 	// schedule some pods
 	var pods []pretender.PodWithTraits
-	pods = append(pods, largePodBuilder.Get())
 	for i := 0; i < 16; i++ {
-		pods = append(pods, basicPodBuilder.Get())
+		pods = append(pods, selfAntiAffinityPodBuilder.GetPod())
 	}
 	for _, pod := range pods {
 		SchedulePodWithTraits(sched, fwk, &ps, pod)
