@@ -15,7 +15,7 @@ func (c PluginInfo) RegisterPluginFunc() st.RegisterPluginFunc {
 	return st.RegisterPluginAsExtensions(c.pluginName, c.pluginNewFunc, c.extensions...)
 }
 
-func NewPluginInfo(pluginName string, weight int32, pluginNewFunc runtime.PluginFactory, extensions ...string) PluginInfo {
+func NewPluginInfo(pluginName string, pluginNewFunc runtime.PluginFactory, extensions ...string) PluginInfo {
 	return PluginInfo{
 		pluginName:    pluginName,
 		pluginNewFunc: pluginNewFunc,
