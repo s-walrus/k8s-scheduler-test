@@ -5,6 +5,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/kubernetes/pkg/scratch/execution"
 	"k8s.io/kubernetes/pkg/scratch/execution/requests"
@@ -46,12 +47,15 @@ func SelfAntiAffinityPods() *execution.StaticRequestGenerator {
 	affinityPodBuilder := podbuilder.NewPodBuilder("affinity-pod")
 	affinityPodBuilder.AddPreferredPodAntiAffinity(map[string]string{"affinity-group": "1"})
 	affinityPodBuilder.SetLabel("affinity-group", "1")
-	for i := 0; i < 4; i++ {
-		reqs = append(reqs, requests.NewSchedulePod(affinityPodBuilder.GetPod()))
-	}
 	reqs = append(reqs, requests.NewRemoveNode("node2"))
+	var podUIDs []types.UID
 	for i := 0; i < 4; i++ {
-		reqs = append(reqs, requests.NewSchedulePod(affinityPodBuilder.GetPod()))
+		pod := affinityPodBuilder.GetPod()
+		podUIDs = append(podUIDs, pod.Pod.UID)
+		reqs = append(reqs, requests.NewSchedulePod(pod))
+	}
+	for _, uid := range podUIDs {
+		reqs = append(reqs, requests.NewKillPod(uid))
 	}
 	return execution.NewStaticRequestGenerator(reqs)
 }

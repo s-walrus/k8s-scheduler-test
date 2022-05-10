@@ -95,8 +95,7 @@ func (p Pods) Evict(ctx context.Context, eviction *v1beta1.Eviction) error {
 }
 
 func (p Pods) EvictV1(ctx context.Context, eviction *policyv1.Eviction) error {
-	//TODO implement me
-	panic("implement me")
+	return p.ps.RemovePod(eviction.UID)
 }
 
 func (p Pods) EvictV1beta1(ctx context.Context, eviction *v1beta1.Eviction) error {

@@ -26,6 +26,14 @@ func (s *StateManager) GetNode(name string) (*v1.Node, error) {
 	return s.ps.GetNode(name)
 }
 
+func (s *StateManager) GetPod(uid types.UID) (*PodWithTraits, error) {
+	pod, ok := s.podCache[uid]
+	if !ok {
+		return nil, errors.New("no pod with given name")
+	}
+	return &pod, nil
+}
+
 func (s *StateManager) Bind(nodeName string, podUID types.UID) error {
 	pwt, ok := s.podCache[podUID]
 	if !ok {
@@ -56,15 +64,27 @@ func (s *StateManager) RemoveNode(nodeName string) error {
 		return err
 	}
 
-	// remove node from scheduler cache
 	err = s.sched.SchedulerCache.RemoveNode(node)
 	// FIXME node info is not deleted from scheduler cache if pods had been on the node
 	return err
 }
 
-// AddOrUpdatePod adds pod to cache or updates existing pod with same UID
 func (s *StateManager) AddOrUpdatePod(pt PodWithTraits) {
 	s.podCache[pt.Pod.UID] = pt
+}
+
+func (s *StateManager) RemovePod(uid types.UID) error {
+	pod, err := s.GetPod(uid)
+	if err != nil {
+		return err
+	}
+	err = s.ps.FindAndRemovePod(uid)
+	if err != nil {
+		return err
+	}
+
+	err = s.sched.SchedulerCache.RemovePod(pod.Pod)
+	return err
 }
 
 func (s *StateManager) SetFramework(framework framework.Framework) error {

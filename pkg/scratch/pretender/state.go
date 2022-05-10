@@ -47,40 +47,40 @@ type State struct {
 	nodes map[string]*nodeState
 }
 
-func (c *State) GetNodeSnapshot(nodeName string) (*NodeSnapshot, error) {
-	ns, err := c.GetNodeState(nodeName)
+func (s *State) GetNodeSnapshot(nodeName string) (*NodeSnapshot, error) {
+	ns, err := s.GetNodeState(nodeName)
 	if err != nil {
 		return nil, err
 	}
 	return makeNodeSnapshot(ns), nil
 }
 
-func (c *State) GetSnapshot() StateSnapshot {
+func (s *State) GetSnapshot() StateSnapshot {
 	snapshot := StateSnapshot{}
-	for nodeName, nodeState := range c.nodes {
+	for nodeName, nodeState := range s.nodes {
 		snapshot[nodeName] = makeNodeSnapshot(nodeState)
 	}
 	return snapshot
 }
 
-func (c *State) GetNodeState(name string) (*nodeState, error) {
-	node, prs := c.nodes[name]
+func (s *State) GetNodeState(name string) (*nodeState, error) {
+	node, prs := s.nodes[name]
 	if !prs {
 		return nil, errors.New("no node with name '" + name + "' found")
 	}
 	return node, nil
 }
 
-func (c *State) GetNode(name string) (*v1.Node, error) {
-	ns, err := c.GetNodeState(name)
+func (s *State) GetNode(name string) (*v1.Node, error) {
+	ns, err := s.GetNodeState(name)
 	if err != nil {
 		return nil, err
 	}
 	return ns.v1Node, nil
 }
 
-func (c *State) Bind(nodeName string, podUID types.UID, traits []PodTrait) error {
-	node, ok := c.nodes[nodeName]
+func (s *State) Bind(nodeName string, podUID types.UID, traits []PodTrait) error {
+	node, ok := s.nodes[nodeName]
 	if !ok {
 		return errors.New("no node with name '" + nodeName + "' found")
 	}
@@ -89,25 +89,36 @@ func (c *State) Bind(nodeName string, podUID types.UID, traits []PodTrait) error
 	return nil
 }
 
-func (c *State) AddNode(node *nodeState) error {
+func (s *State) AddNode(node *nodeState) error {
 	// FIXME unnecessary double map lookup
-	_, ok := c.nodes[node.name]
+	_, ok := s.nodes[node.name]
 	if ok {
 		return errors.New("node with given name has been already defined")
 	}
 
-	c.nodes[node.name] = node
+	s.nodes[node.name] = node
 	return nil
 }
 
-func (c *State) RemoveNode(nodeName string) error {
-	_, ok := c.nodes[nodeName]
+func (s *State) RemoveNode(nodeName string) error {
+	_, ok := s.nodes[nodeName]
 	if !ok {
 		return errors.New("no node with given name")
 	}
 
-	delete(c.nodes, nodeName)
+	delete(s.nodes, nodeName)
 	return nil
+}
+
+func (s *State) FindAndRemovePod(uid types.UID) error {
+	for _, node := range s.nodes {
+		_, ok := node.pods[uid]
+		if ok {
+			delete(node.pods, uid)
+			return nil
+		}
+	}
+	return errors.New("pod was not found")
 }
 
 func NewState() State {
