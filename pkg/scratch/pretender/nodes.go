@@ -15,9 +15,8 @@ type Nodes struct {
 	client clientset.Interface
 }
 
-func (c Nodes) Create(ctx context.Context, node *v1.Node, opts metav1.CreateOptions) (*v1.Node, error) {
-	err := c.ps.AddNode(node)
-	//c.sched.SchedulerCache.AddNode(node)
+func (n Nodes) Create(ctx context.Context, node *v1.Node, opts metav1.CreateOptions) (*v1.Node, error) {
+	err := n.ps.AddNode(node)
 	return node, err
 }
 
@@ -31,9 +30,9 @@ func (Nodes) UpdateStatus(ctx context.Context, node *v1.Node, opts metav1.Update
 	panic("implement me")
 }
 
-func (Nodes) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
-	//TODO implement me
-	panic("implement me")
+func (n Nodes) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
+	err := n.ps.RemoveNode(name)
+	return err
 }
 
 func (Nodes) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
@@ -41,8 +40,8 @@ func (Nodes) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, li
 	panic("implement me")
 }
 
-func (c Nodes) Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Node, error) {
-	node, err := c.ps.GetNode(name)
+func (n Nodes) Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Node, error) {
+	node, err := n.ps.GetNode(name)
 	return node, err
 }
 

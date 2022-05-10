@@ -22,6 +22,11 @@ func (c *RequestHandler) AddNode(node *v1.Node) error {
 	return err
 }
 
+func (c *RequestHandler) RemoveNode(nodeName string) error {
+	err := c.fwk.ClientSet().CoreV1().Nodes().Delete(context.Background(), nodeName, metav1.DeleteOptions{})
+	return err
+}
+
 func (c *RequestHandler) SchedulePod(pod pretender.PodWithTraits) error {
 	c.ps.AddOrUpdatePod(pod)
 	scheduler.FakeScheduleOne(context.Background(), c.sched, c.fwk, pod.Pod)

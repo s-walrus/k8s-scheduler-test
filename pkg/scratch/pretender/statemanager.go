@@ -18,44 +18,60 @@ type StateManager struct {
 	podCache map[types.UID]PodWithTraits
 }
 
-func (c *StateManager) GetSnapshot() StateSnapshot {
-	return c.ps.GetSnapshot()
+func (s *StateManager) GetSnapshot() StateSnapshot {
+	return s.ps.GetSnapshot()
 }
 
-func (c *StateManager) GetNode(name string) (*v1.Node, error) {
-	return c.ps.GetNode(name)
+func (s *StateManager) GetNode(name string) (*v1.Node, error) {
+	return s.ps.GetNode(name)
 }
 
-func (c *StateManager) Bind(nodeName string, podUID types.UID) error {
-	pwt, ok := c.podCache[podUID]
+func (s *StateManager) Bind(nodeName string, podUID types.UID) error {
+	pwt, ok := s.podCache[podUID]
 	if !ok {
 		return errors.New("no pod with given UID in cache")
 	}
-	err := c.ps.Bind(nodeName, podUID, pwt.Traits)
+	err := s.ps.Bind(nodeName, podUID, pwt.Traits)
 	if err == nil {
 		pwt.Pod.Spec.NodeName = nodeName
 	}
 	return err
 }
 
-func (c *StateManager) AddNode(node *v1.Node) error {
-	err := c.ps.AddNode(NewNodeState(node))
+func (s *StateManager) AddNode(node *v1.Node) error {
+	err := s.ps.AddNode(NewNodeState(node))
 	if err == nil {
-		c.sched.SchedulerCache.AddNode(node)
+		s.sched.SchedulerCache.AddNode(node)
 	}
 	return err
 }
 
-// AddOrUpdatePod adds pod to cache or updates existing pod with same UID
-func (c *StateManager) AddOrUpdatePod(pt PodWithTraits) {
-	c.podCache[pt.Pod.UID] = pt
+func (s *StateManager) RemoveNode(nodeName string) error {
+	node, err := s.ps.GetNode(nodeName)
+	if err != nil {
+		return err
+	}
+	err = s.ps.RemoveNode(nodeName)
+	if err != nil {
+		return err
+	}
+
+	// remove node from scheduler cache
+	err = s.sched.SchedulerCache.RemoveNode(node)
+	// FIXME node info is not deleted from scheduler cache if pods had been on the node
+	return err
 }
 
-func (c *StateManager) SetFramework(framework framework.Framework) error {
-	if c.fwk != nil {
+// AddOrUpdatePod adds pod to cache or updates existing pod with same UID
+func (s *StateManager) AddOrUpdatePod(pt PodWithTraits) {
+	s.podCache[pt.Pod.UID] = pt
+}
+
+func (s *StateManager) SetFramework(framework framework.Framework) error {
+	if s.fwk != nil {
 		return errors.New("framework cannot be redefined")
 	}
-	c.fwk = framework
+	s.fwk = framework
 	return nil
 }
 

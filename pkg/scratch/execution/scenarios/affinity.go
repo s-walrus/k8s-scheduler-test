@@ -37,7 +37,7 @@ func NewTestNode(name string) *v1.Node {
 	return &node
 }
 
-func NewSelfAntiAffinityPods() *execution.StaticRequestGenerator {
+func SelfAntiAffinityPods() *execution.StaticRequestGenerator {
 	var reqs []execution.Request
 	for i := 0; i < 3; i++ {
 		reqs = append(reqs, requests.NewAddNode(NewTestNode(fmt.Sprintf("node%d", i+1))))
@@ -46,7 +46,11 @@ func NewSelfAntiAffinityPods() *execution.StaticRequestGenerator {
 	affinityPodBuilder := podbuilder.NewPodBuilder("affinity-pod")
 	affinityPodBuilder.AddPreferredPodAntiAffinity(map[string]string{"affinity-group": "1"})
 	affinityPodBuilder.SetLabel("affinity-group", "1")
-	for i := 0; i < 16; i++ {
+	for i := 0; i < 4; i++ {
+		reqs = append(reqs, requests.NewSchedulePod(affinityPodBuilder.GetPod()))
+	}
+	reqs = append(reqs, requests.NewRemoveNode("node2"))
+	for i := 0; i < 4; i++ {
 		reqs = append(reqs, requests.NewSchedulePod(affinityPodBuilder.GetPod()))
 	}
 	return execution.NewStaticRequestGenerator(reqs)

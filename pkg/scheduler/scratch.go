@@ -26,9 +26,7 @@ func CreateTestScheduler(ctx context.Context, snapshot *internalcache.Snapshot) 
 	var extenders []framework.Extender
 	stop := make(chan struct{})
 	defer close(stop) // not sure what it is for
-	// TODO sync pretender.State with Cache
 	scache := internalcache.New(100*time.Millisecond, stop)
-	//scache.AddNode(&node)
 	algo := NewGenericScheduler(
 		scache,
 		snapshot,
@@ -64,14 +62,6 @@ func FakeScheduleOne(ctx context.Context, sched *Scheduler, fwk framework.Framew
 	podInfo := &framework.QueuedPodInfo{
 		PodInfo: &framework.PodInfo{
 			Pod: pod,
-			//RequiredAntiAffinityTerms: []framework.AffinityTerm{
-			//	framework.AffinityTerm{
-			//		Namespaces:        nil,
-			//		Selector:          nil,
-			//		TopologyKey:       "",
-			//		NamespaceSelector: nil,
-			//	},
-			//},
 		},
 	}
 
@@ -79,9 +69,6 @@ func FakeScheduleOne(ctx context.Context, sched *Scheduler, fwk framework.Framew
 	if podInfo == nil || podInfo.Pod == nil {
 		return
 	}
-	//pod := podInfo.Pod
-	// We use a specific framework instead of choosing a framework depending on pod config
-	//fwk, err := sched.frameworkForPod(pod)
 
 	if sched.skipPodSchedule(fwk, pod) {
 		return
@@ -193,8 +180,7 @@ func FakeScheduleOne(ctx context.Context, sched *Scheduler, fwk framework.Framew
 		podsToActivate.Map = make(map[string]*v1.Pod)
 	}
 
-	// No async here
-	// bind the pod to its host asynchronously (we can do this b/c of the assumption step above).
+	// bind the pod to its host asynchronously (not really) (we can do this b/c of the assumption step above).
 	{
 		bindingCycleCtx, cancel := context.WithCancel(ctx)
 		defer cancel()

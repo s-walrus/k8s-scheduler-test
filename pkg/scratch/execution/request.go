@@ -9,7 +9,7 @@ type RequestGenerator interface {
 }
 
 type StaticRequestGenerator struct {
-	// FIXME may be better implemented using channels
+	// FIXME probably may be better implemented using channels
 	requests []Request
 	i        int
 }

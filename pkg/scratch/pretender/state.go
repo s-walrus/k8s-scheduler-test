@@ -91,12 +91,22 @@ func (c *State) Bind(nodeName string, podUID types.UID, traits []PodTrait) error
 
 func (c *State) AddNode(node *nodeState) error {
 	// FIXME unnecessary double map lookup
-	_, prs := c.nodes[node.name]
-	if prs {
+	_, ok := c.nodes[node.name]
+	if ok {
 		return errors.New("node with given name has been already defined")
 	}
 
 	c.nodes[node.name] = node
+	return nil
+}
+
+func (c *State) RemoveNode(nodeName string) error {
+	_, ok := c.nodes[nodeName]
+	if !ok {
+		return errors.New("no node with given name")
+	}
+
+	delete(c.nodes, nodeName)
 	return nil
 }
 

@@ -71,5 +71,5 @@ func main() {
 		execution.NewPluginInfo(defaultbinder.Name, defaultbinder.New, "Bind"),
 	}
 
-	PrintTestResult(execution.RunSchedulerIsolationTest(plugins, scenarios.NewSelfAntiAffinityPods()))
+	PrintTestResult(execution.RunSchedulerIsolationTest(plugins, scenarios.SelfAntiAffinityPods()))
 }
