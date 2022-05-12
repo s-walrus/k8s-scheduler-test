@@ -7,7 +7,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
@@ -21,6 +20,7 @@ import (
 	"k8s.io/kubernetes/pkg/scratch/execution/requests"
 	"k8s.io/kubernetes/pkg/scratch/pretender"
 	"k8s.io/kubernetes/pkg/scratch/pretender/podbuilder"
+	"k8s.io/kubernetes/pkg/scratch/pretender/podtraits"
 )
 
 func InitLogs() {
@@ -55,11 +55,12 @@ func PrintTestResult(snapshots []pretender.StateSnapshot) {
 		fmt.Println("{")
 		for node, state := range s {
 			fmt.Printf(
-				"\t%s: { cnt: %d, mem: %d, cpu: %d, t: %d }\n",
+				"\t%s: { cnt: %d, mem: %d, cpu: %d, rcpu: %f, t: %d }\n",
 				node,
 				state.NodeCount,
 				state.MemoryRequested,
 				state.MilliCPURequested,
+				state.CPULoad,
 				state.Time,
 			)
 		}
@@ -95,27 +96,21 @@ func NewTestNode(name string) *v1.Node {
 
 func SelfAntiAffinityPodsScenario() *execution.StaticRequestGenerator {
 	var reqs []execution.Request
-	var time int64 = 0
-	for i := 0; i < 3; i++ {
-		reqs = append(reqs, requests.NewAddNode(NewTestNode(fmt.Sprintf("node%d", i+1)), time))
-		time++
+	for i := 0; i < 1; i++ {
+		reqs = append(reqs, requests.NewAddNode(NewTestNode(fmt.Sprintf("node%d", i+1)), 0))
 	}
 
-	affinityPodBuilder := podbuilder.NewPodBuilder("affinity-pod")
-	affinityPodBuilder.AddPreferredPodAntiAffinity(map[string]string{"affinity-group": "1"})
-	affinityPodBuilder.SetLabel("affinity-group", "1")
-	reqs = append(reqs, requests.NewRemoveNode("node2", time))
-	time++
-	var podUIDs []types.UID
-	for i := 0; i < 4; i++ {
-		pod := affinityPodBuilder.GetPod()
-		podUIDs = append(podUIDs, pod.Pod.UID)
-		reqs = append(reqs, requests.NewSchedulePod(pod, time))
-		time++
-	}
-	for _, uid := range podUIDs {
-		reqs = append(reqs, requests.NewKillPod(uid, time))
-		time++
+	//affinityPodBuilder := podbuilder.NewPodBuilder("affinity-pod")
+	//affinityPodBuilder.AddPreferredPodAntiAffinity(map[string]string{"affinity-group": "1"})
+	//affinityPodBuilder.SetLabel("affinity-group", "1")
+	cpuPodBuilder := podbuilder.NewPodBuilder("cpu").AddCPUUsageFunc(podtraits.NewFiniteFourierSeries(
+		5,
+		[]float64{1, 3, 1, 1},
+		[]float64{0.5},
+	))
+	reqs = append(reqs, requests.NewSchedulePod(cpuPodBuilder.GetPod(), 0))
+	for i := 0; i < 20000; i++ {
+		reqs = append(reqs, requests.NewMakeSnapshot(int64(i*1000)))
 	}
 	return execution.NewStaticRequestGenerator(reqs)
 }
@@ -143,8 +138,8 @@ Closest project goals:
 Tasks:
 - add a pod trait that reflects real resource usage
 	$ figure out how to do it with basic fourier series
-	* add time consideration to pod traits handling
-	- implement the pod trait
+	$ add time consideration to pod traits handling
+	$ implement the pod trait
 	* track choke time
 + create a scenario with pods consuming random real resources
 	- implement a pod builder for random resource consuming pods (random are fourier series coefficients [realistic though])

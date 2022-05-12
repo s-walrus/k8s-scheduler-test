@@ -17,8 +17,8 @@ func (f *FiniteFourierSeries) GetValue(x float64) float64 {
 	for i, a := range f.sinKs {
 		y += a * math.Sin((float64)(i+1)*x)
 	}
-	for i, a := range f.sinKs {
-		y += a * math.Cos((float64)(i+1)*x)
+	for i, b := range f.cosKs {
+		y += b * math.Cos((float64)(i+1)*x)
 	}
 	return y
 }

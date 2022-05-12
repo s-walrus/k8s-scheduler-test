@@ -80,6 +80,11 @@ func (c *PodBuilder) SetLabel(name, value string) *PodBuilder {
 	return c
 }
 
+func (c *PodBuilder) AddCPUUsageFunc(usageFunc *podtraits.FiniteFourierSeries) *PodBuilder {
+	c.pod.Traits = append(c.pod.Traits, podtraits.WithComplexCPUUsage{UsageFunc: usageFunc})
+	return c
+}
+
 func NewPodBuilder(name string) *PodBuilder {
 	return &PodBuilder{
 		pod: pretender.PodWithTraits{
