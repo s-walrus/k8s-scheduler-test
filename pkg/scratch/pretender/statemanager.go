@@ -95,6 +95,10 @@ func (s *StateManager) SetFramework(framework framework.Framework) error {
 	return nil
 }
 
+func (s *StateManager) UpdateTime(time int64) error {
+	return s.UpdateTime(time)
+}
+
 func NewStateManager(scheduler *scheduler.Scheduler) StateManager {
 	return StateManager{
 		ps:       NewState(),

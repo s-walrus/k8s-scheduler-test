@@ -40,6 +40,10 @@ func (c *RequestHandler) KillPod(uid types.UID) error {
 	return err
 }
 
+func (c *RequestHandler) UpdateTime(time int64) error {
+	return c.ps.UpdateTime(time)
+}
+
 func NewRequestHandler(ps *pretender.StateManager, fwk framework.Framework, sched *scheduler.Scheduler) RequestHandler {
 	return RequestHandler{
 		ps:    ps,

@@ -4,6 +4,7 @@ type NodeSnapshot struct {
 	NodeCount         int
 	MilliCPURequested int64
 	MemoryRequested   int64
+	CPULoad           float64
 }
 
 func newEmptyNodeSnapshot(state *nodeState) *NodeSnapshot {
@@ -13,11 +14,11 @@ func newEmptyNodeSnapshot(state *nodeState) *NodeSnapshot {
 }
 
 // FIXME is functional style ok?
-func makeNodeSnapshot(state *nodeState) *NodeSnapshot {
+func makeNodeSnapshot(state *nodeState, time int64) *NodeSnapshot {
 	snapshot := newEmptyNodeSnapshot(state)
 	for _, traits := range state.pods {
 		for _, trait := range traits {
-			trait.Apply(snapshot)
+			trait.Apply(snapshot, time)
 		}
 	}
 	return snapshot

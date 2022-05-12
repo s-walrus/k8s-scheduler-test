@@ -8,7 +8,7 @@ import (
 )
 
 type PodTrait interface {
-	Apply(snapshot *NodeSnapshot)
+	Apply(snapshot *NodeSnapshot, time int64)
 }
 
 type PodWithTraits struct {
@@ -45,6 +45,7 @@ func NewNodeState(node *v1.Node) *nodeState {
 
 type State struct {
 	nodes map[string]*nodeState
+	time  int64
 }
 
 func (s *State) GetNodeSnapshot(nodeName string) (*NodeSnapshot, error) {
@@ -52,13 +53,13 @@ func (s *State) GetNodeSnapshot(nodeName string) (*NodeSnapshot, error) {
 	if err != nil {
 		return nil, err
 	}
-	return makeNodeSnapshot(ns), nil
+	return makeNodeSnapshot(ns, s.time), nil
 }
 
 func (s *State) GetSnapshot() StateSnapshot {
 	snapshot := StateSnapshot{}
 	for nodeName, nodeState := range s.nodes {
-		snapshot[nodeName] = makeNodeSnapshot(nodeState)
+		snapshot[nodeName] = makeNodeSnapshot(nodeState, s.time)
 	}
 	return snapshot
 }
@@ -121,8 +122,17 @@ func (s *State) FindAndRemovePod(uid types.UID) error {
 	return errors.New("pod was not found")
 }
 
+func (s *State) UpdateTime(time int64) error {
+	if time < s.time {
+		return errors.New("cannot decrease time counter")
+	}
+	s.time = time
+	return nil
+}
+
 func NewState() State {
 	return State{
 		nodes: make(map[string]*nodeState),
+		time:  0,
 	}
 }
