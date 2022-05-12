@@ -6,13 +6,18 @@ import (
 )
 
 type KillPod struct {
-	uid types.UID
+	uid  types.UID
+	time int64
 }
 
 func (r KillPod) Accept(handler *execution.RequestHandler) error {
+	err := handler.UpdateTime(r.time)
+	if err != nil {
+		return err
+	}
 	return handler.KillPod(r.uid)
 }
 
-func NewKillPod(uid types.UID) *KillPod {
-	return &KillPod{uid: uid}
+func NewKillPod(uid types.UID, time int64) *KillPod {
+	return &KillPod{uid: uid, time: time}
 }

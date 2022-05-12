@@ -1,5 +1,7 @@
 package execution
 
+// FIXME a lot of code duplication in requests/* caused by Request design
+
 type Request interface {
 	Accept(handler *RequestHandler) error
 }

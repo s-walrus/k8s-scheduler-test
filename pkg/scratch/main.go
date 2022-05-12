@@ -55,11 +55,12 @@ func PrintTestResult(snapshots []pretender.StateSnapshot) {
 		fmt.Println("{")
 		for node, state := range s {
 			fmt.Printf(
-				"\t%s: { cnt: %d, mem: %d, cpu: %d }\n",
+				"\t%s: { cnt: %d, mem: %d, cpu: %d, t: %d }\n",
 				node,
 				state.NodeCount,
 				state.MemoryRequested,
 				state.MilliCPURequested,
+				state.Time,
 			)
 		}
 		fmt.Println("},")
@@ -94,22 +95,27 @@ func NewTestNode(name string) *v1.Node {
 
 func SelfAntiAffinityPodsScenario() *execution.StaticRequestGenerator {
 	var reqs []execution.Request
+	var time int64 = 0
 	for i := 0; i < 3; i++ {
-		reqs = append(reqs, requests.NewAddNode(NewTestNode(fmt.Sprintf("node%d", i+1))))
+		reqs = append(reqs, requests.NewAddNode(NewTestNode(fmt.Sprintf("node%d", i+1)), time))
+		time++
 	}
 
 	affinityPodBuilder := podbuilder.NewPodBuilder("affinity-pod")
 	affinityPodBuilder.AddPreferredPodAntiAffinity(map[string]string{"affinity-group": "1"})
 	affinityPodBuilder.SetLabel("affinity-group", "1")
-	reqs = append(reqs, requests.NewRemoveNode("node2"))
+	reqs = append(reqs, requests.NewRemoveNode("node2", time))
+	time++
 	var podUIDs []types.UID
 	for i := 0; i < 4; i++ {
 		pod := affinityPodBuilder.GetPod()
 		podUIDs = append(podUIDs, pod.Pod.UID)
-		reqs = append(reqs, requests.NewSchedulePod(pod))
+		reqs = append(reqs, requests.NewSchedulePod(pod, time))
+		time++
 	}
 	for _, uid := range podUIDs {
-		reqs = append(reqs, requests.NewKillPod(uid))
+		reqs = append(reqs, requests.NewKillPod(uid, time))
+		time++
 	}
 	return execution.NewStaticRequestGenerator(reqs)
 }

@@ -6,13 +6,18 @@ import (
 )
 
 type SchedulePod struct {
-	pod pretender.PodWithTraits
+	pod  pretender.PodWithTraits
+	time int64
 }
 
 func (r SchedulePod) Accept(handler *execution.RequestHandler) error {
+	err := handler.UpdateTime(r.time)
+	if err != nil {
+		return err
+	}
 	return handler.SchedulePod(r.pod)
 }
 
-func NewSchedulePod(pod pretender.PodWithTraits) *SchedulePod {
-	return &SchedulePod{pod: pod}
+func NewSchedulePod(pod pretender.PodWithTraits, time int64) *SchedulePod {
+	return &SchedulePod{pod: pod, time: time}
 }
