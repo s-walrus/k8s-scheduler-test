@@ -135,9 +135,9 @@ Closest project goals:
 + [come up with a plugin and test it on a relatively large scale]
 
 Tasks:
-+ add a pod trait that reflects real resource usage
-	- figure out how to do it with basic fourier series
-	- add time consideration to pod traits handling
+- add a pod trait that reflects real resource usage
+	$ figure out how to do it with basic fourier series
+	* add time consideration to pod traits handling
 	- implement the pod trait
 	* track choke time
 + create a scenario with pods consuming random real resources
