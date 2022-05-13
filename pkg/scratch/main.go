@@ -165,7 +165,7 @@ $ add a pod trait that reflects real resource usage
 + create a scenario with pods consuming random real resources
 	$ implement a pod builder for random resource consuming pods (random are fourier series coefficients [realistic though])
 	* add an option to make synchronized spikes in resource usage
-	- add "request update" request
+	$ add "request update" request
 	- create the scenario and a similar one with request updates
 * run the test with different configurations of the scenario (similar function shifted, for example)
 + make some useful metrics from test results

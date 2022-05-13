@@ -22,3 +22,19 @@ func (f *FiniteFourierSeries) GetValue(x float64) float64 {
 	}
 	return y
 }
+
+func (f *FiniteFourierSeries) GetIntegral() *FiniteFourierSeries {
+	var sinKs, cosKs []float64
+	for i, a := range f.sinKs {
+		cosKs = append(cosKs, -a/float64(i+1))
+	}
+	for i, b := range f.cosKs {
+		sinKs = append(sinKs, b/float64(i+1))
+	}
+	return NewFiniteFourierSeries(0, sinKs, cosKs)
+}
+
+func (f *FiniteFourierSeries) Integrate(a float64, b float64) float64 {
+	integral := f.GetIntegral()
+	return integral.GetValue(b) - integral.GetValue(a)
+}
