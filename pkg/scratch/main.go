@@ -21,6 +21,9 @@ import (
 	"k8s.io/kubernetes/pkg/scratch/pretender"
 	"k8s.io/kubernetes/pkg/scratch/pretender/podbuilder"
 	"k8s.io/kubernetes/pkg/scratch/pretender/podtraits"
+	"math"
+	"math/rand"
+	"time"
 )
 
 func InitLogs() {
@@ -94,7 +97,26 @@ func NewTestNode(name string) *v1.Node {
 	return &node
 }
 
-func SelfAntiAffinityPodsScenario() *execution.StaticRequestGenerator {
+func NewRandomPodBuilder() *podbuilder.PodBuilder {
+	var sinKs, cosKs []float64
+	var sumAbs float64 = 0
+	for i := 0; i < 8; i++ {
+		sinKs = append(sinKs, (rand.Float64()*2-1)/float64(i+4))
+		sumAbs += math.Abs(sinKs[i])
+	}
+	for i := 0; i < 8; i++ {
+		cosKs = append(cosKs, (rand.Float64()*2-1)/float64(i+4))
+		sumAbs += math.Abs(cosKs[i])
+	}
+	k := sumAbs / 2
+
+	pb := podbuilder.NewPodBuilder(fmt.Sprintf("random-pod-%d", rand.Intn(1000)))
+	pb.AddCPUUsageFunc(podtraits.NewFiniteFourierSeries(k, sinKs, cosKs))
+	pb.SetCPURequest(int64(k))
+	return pb
+}
+
+func MyTestScenario() *execution.StaticRequestGenerator {
 	var reqs []execution.Request
 	for i := 0; i < 1; i++ {
 		reqs = append(reqs, requests.NewAddNode(NewTestNode(fmt.Sprintf("node%d", i+1)), 0))
@@ -103,12 +125,10 @@ func SelfAntiAffinityPodsScenario() *execution.StaticRequestGenerator {
 	//affinityPodBuilder := podbuilder.NewPodBuilder("affinity-pod")
 	//affinityPodBuilder.AddPreferredPodAntiAffinity(map[string]string{"affinity-group": "1"})
 	//affinityPodBuilder.SetLabel("affinity-group", "1")
-	cpuPodBuilder := podbuilder.NewPodBuilder("cpu").AddCPUUsageFunc(podtraits.NewFiniteFourierSeries(
-		5,
-		[]float64{1, 3, 1, 1},
-		[]float64{0.5},
-	))
-	reqs = append(reqs, requests.NewSchedulePod(cpuPodBuilder.GetPod(), 0))
+	for i := 0; i < 10; i++ {
+		reqs = append(reqs, requests.NewSchedulePod(NewRandomPodBuilder().GetPod(), 0))
+	}
+
 	for i := 0; i < 20000; i++ {
 		reqs = append(reqs, requests.NewMakeSnapshot(int64(i*1000)))
 	}
@@ -117,6 +137,7 @@ func SelfAntiAffinityPodsScenario() *execution.StaticRequestGenerator {
 
 func main() {
 	InitLogs()
+	rand.Seed(int64(time.Now().Second()))
 
 	plugins := []execution.PluginInfo{
 		execution.NewPluginInfo(queuesort.Name, queuesort.New, "QueueSort"),
@@ -126,7 +147,7 @@ func main() {
 		execution.NewPluginInfo(defaultbinder.Name, defaultbinder.New, "Bind"),
 	}
 
-	PrintTestResult(execution.RunSchedulerIsolationTest(plugins, SelfAntiAffinityPodsScenario()))
+	PrintTestResult(execution.RunSchedulerIsolationTest(plugins, MyTestScenario()))
 }
 
 /*
@@ -136,13 +157,13 @@ Closest project goals:
 + [come up with a plugin and test it on a relatively large scale]
 
 Tasks:
-- add a pod trait that reflects real resource usage
+$ add a pod trait that reflects real resource usage
 	$ figure out how to do it with basic fourier series
 	$ add time consideration to pod traits handling
 	$ implement the pod trait
 	* track choke time
 + create a scenario with pods consuming random real resources
-	- implement a pod builder for random resource consuming pods (random are fourier series coefficients [realistic though])
+	$ implement a pod builder for random resource consuming pods (random are fourier series coefficients [realistic though])
 	* add an option to make synchronized spikes in resource usage
 	- add "request update" request
 	- create the scenario and a similar one with request updates
