@@ -97,39 +97,51 @@ func NewTestNode(name string) *v1.Node {
 	return &node
 }
 
-func NewRandomPodBuilder() *podbuilder.PodBuilder {
+func NewRandomPodBuilder() (*podbuilder.PodBuilder, *podtraits.FiniteFourierSeries) {
 	var sinKs, cosKs []float64
 	var sumAbs float64 = 0
 	for i := 0; i < 8; i++ {
-		sinKs = append(sinKs, (rand.Float64()*2-1)/float64(i+4))
+		sinKs = append(sinKs, 1000*(rand.Float64()*2-1)/float64(i+4))
 		sumAbs += math.Abs(sinKs[i])
 	}
 	for i := 0; i < 8; i++ {
-		cosKs = append(cosKs, (rand.Float64()*2-1)/float64(i+4))
+		cosKs = append(cosKs, 1000*(rand.Float64()*2-1)/float64(i+4))
 		sumAbs += math.Abs(cosKs[i])
 	}
 	k := sumAbs / 2
 
+	cpuFunc := podtraits.NewFiniteFourierSeries(k, sinKs, cosKs)
+	cpuEstimate := cpuFunc.Integrate(-1000, 0) / 1000
+
 	pb := podbuilder.NewPodBuilder(fmt.Sprintf("random-pod-%d", rand.Intn(1000)))
 	pb.AddCPUUsageFunc(podtraits.NewFiniteFourierSeries(k, sinKs, cosKs))
-	pb.SetCPURequest(int64(k))
-	return pb
+	pb.SetCPURequest(int64(cpuEstimate))
+	return pb, cpuFunc
 }
 
-func MyTestScenario() *execution.StaticRequestGenerator {
+func MyTestScenario(updateRequests bool) *execution.StaticRequestGenerator {
 	var reqs []execution.Request
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 4; i++ {
 		reqs = append(reqs, requests.NewAddNode(NewTestNode(fmt.Sprintf("node%d", i+1)), 0))
 	}
 
-	//affinityPodBuilder := podbuilder.NewPodBuilder("affinity-pod")
-	//affinityPodBuilder.AddPreferredPodAntiAffinity(map[string]string{"affinity-group": "1"})
-	//affinityPodBuilder.SetLabel("affinity-group", "1")
-	for i := 0; i < 10; i++ {
-		reqs = append(reqs, requests.NewSchedulePod(NewRandomPodBuilder().GetPod(), 0))
-	}
+	var pods []pretender.PodWithTraits
+	var cpuFuncs []*podtraits.FiniteFourierSeries
 
 	for i := 0; i < 10000; i++ {
+		if i%100 == 0 {
+			if updateRequests {
+				for i, pod := range pods {
+					cpuEstimate := cpuFuncs[i].Integrate(float64((i-1)*1000), float64(i*1000))
+					pod.Pod.Spec.Containers[0].Resources.Requests[v1.ResourceCPU] = *resource.NewQuantity(int64(cpuEstimate), resource.DecimalSI)
+				}
+			}
+			pb, cpuFunc := NewRandomPodBuilder()
+			pod := pb.GetPod()
+			pods = append(pods, pod)
+			cpuFuncs = append(cpuFuncs, cpuFunc)
+			reqs = append(reqs, requests.NewSchedulePod(pod, int64(i*1000)))
+		}
 		reqs = append(reqs, requests.NewMakeSnapshot(int64(i*1000)))
 	}
 	return execution.NewStaticRequestGenerator(reqs)
@@ -147,7 +159,7 @@ func main() {
 		execution.NewPluginInfo(defaultbinder.Name, defaultbinder.New, "Bind"),
 	}
 
-	PrintTestResult(execution.RunSchedulerIsolationTest(plugins, MyTestScenario()))
+	PrintTestResult(execution.RunSchedulerIsolationTest(plugins, MyTestScenario(true)))
 }
 
 /*
