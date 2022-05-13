@@ -122,6 +122,17 @@ func (s *State) FindAndRemovePod(uid types.UID) error {
 	return errors.New("pod was not found")
 }
 
+func (s *State) FindAndUpdatePod(uid types.UID, traits []PodTrait) error {
+	for _, node := range s.nodes {
+		_, ok := node.pods[uid]
+		if ok {
+			node.pods[uid] = traits
+			return nil
+		}
+	}
+	return errors.New("pod was not found")
+}
+
 func (s *State) UpdateTime(time int64) error {
 	if time < s.time {
 		return errors.New("cannot decrease time counter")

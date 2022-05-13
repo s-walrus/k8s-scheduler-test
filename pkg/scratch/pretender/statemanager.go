@@ -99,6 +99,20 @@ func (s *StateManager) UpdateTime(time int64) error {
 	return s.ps.UpdateTime(time)
 }
 
+func (s *StateManager) UpdatePod(pod PodWithTraits) error {
+	uid := pod.Pod.UID
+	err := s.sched.SchedulerCache.UpdatePod(s.podCache[uid].Pod, pod.Pod)
+	if err != nil {
+		return err
+	}
+	err = s.ps.FindAndUpdatePod(uid, pod.Traits)
+	if err != nil {
+		return err
+	}
+	s.podCache[uid] = pod
+	return nil
+}
+
 func NewStateManager(scheduler *scheduler.Scheduler) StateManager {
 	return StateManager{
 		ps:       NewState(),
