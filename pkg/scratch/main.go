@@ -71,7 +71,43 @@ func PrintTestResult(snapshots []pretender.StateSnapshot) {
 	}
 }
 
-// TODO add node builder, remove NewTestNode
+func CountCPUOverloadTime(snapshots []pretender.StateSnapshot, nodeCapacity map[string]int64) map[string]int64 {
+	olTime := map[string]int64{}
+
+	for i, snapshot := range snapshots {
+		if i == 0 {
+			continue
+		}
+		for k, ns := range snapshot {
+			if int64(ns.CPULoad) >= nodeCapacity[k] {
+				prevTime := snapshots[i-1][k].Time
+				olTime[k] += ns.Time - prevTime
+			}
+		}
+	}
+
+	return olTime
+}
+
+func GetAverageCPULoadTimeRatio(snapshots []pretender.StateSnapshot, nodeCapacity map[string]int64) float64 {
+	var nodes []string
+	for k := range nodeCapacity {
+		nodes = append(nodes, k)
+	}
+
+	overloadTime := CountCPUOverloadTime(snapshots, nodeCapacity)
+	timeTotal := snapshots[len(snapshots)-1][nodes[0]].Time - 0
+
+	var sum int64 = 0
+	for _, v := range overloadTime {
+		sum += v
+	}
+	ratio := float64(sum) / float64(timeTotal) / float64(len(nodes))
+
+	return ratio
+}
+
+// FIXME add node builder, remove NewTestNode
 
 func NewTestNode(name string) *v1.Node {
 	node := v1.Node{
@@ -84,14 +120,14 @@ func NewTestNode(name string) *v1.Node {
 		},
 		Status: v1.NodeStatus{
 			Capacity: v1.ResourceList{
-				v1.ResourceCPU:    *(resource.NewQuantity(100500, resource.DecimalSI)),
-				v1.ResourceMemory: *(resource.NewQuantity(100500, resource.DecimalSI)),
-				v1.ResourcePods:   *(resource.NewQuantity(10, resource.DecimalSI)),
+				v1.ResourceCPU:    *(resource.NewQuantity(0, resource.DecimalSI)),
+				v1.ResourceMemory: *(resource.NewQuantity(0, resource.DecimalSI)),
+				v1.ResourcePods:   *(resource.NewQuantity(0, resource.DecimalSI)),
 			},
 			Allocatable: v1.ResourceList{
-				v1.ResourceCPU:    *(resource.NewQuantity(100500, resource.DecimalSI)),
-				v1.ResourceMemory: *(resource.NewQuantity(100500, resource.DecimalSI)),
-				v1.ResourcePods:   *(resource.NewQuantity(10, resource.DecimalSI)),
+				v1.ResourceCPU:    *(resource.NewQuantity(0, resource.DecimalSI)),
+				v1.ResourceMemory: *(resource.NewQuantity(0, resource.DecimalSI)),
+				v1.ResourcePods:   *(resource.NewQuantity(0, resource.DecimalSI)),
 			}},
 	}
 	return &node
@@ -159,7 +195,32 @@ func main() {
 		execution.NewPluginInfo(defaultbinder.Name, defaultbinder.New, "Bind"),
 	}
 
-	PrintTestResult(execution.RunSchedulerIsolationTest(plugins, MyTestScenario(true)))
+	nodeCapacity := map[string]int64{
+		"node1": 15000,
+		"node2": 15000,
+		"node3": 15000,
+		"node4": 15000,
+	}
+
+	{
+		var sum float64 = 0
+		for i := 0; i < 10; i++ {
+			fmt.Printf("Running test without updates (%d/10)\n", i+1)
+			snapshots := execution.RunSchedulerIsolationTest(plugins, MyTestScenario(false))
+			sum += GetAverageCPULoadTimeRatio(snapshots, nodeCapacity)
+		}
+		fmt.Printf("Average CPU overload time ratio *without* updates: %.3f\n\n", sum/10)
+	}
+
+	{
+		var sum float64 = 0
+		for i := 0; i < 10; i++ {
+			fmt.Printf("Running test with updates (%d/10)\n", i+1)
+			snapshots := execution.RunSchedulerIsolationTest(plugins, MyTestScenario(true))
+			sum += GetAverageCPULoadTimeRatio(snapshots, nodeCapacity)
+		}
+		fmt.Printf("Average CPU overload time ratio *with* updates: %.3f\n\n", sum/10)
+	}
 }
 
 /*
@@ -174,11 +235,11 @@ $ add a pod trait that reflects real resource usage
 	$ add time consideration to pod traits handling
 	$ implement the pod trait
 	* track choke time
-+ create a scenario with pods consuming random real resources
+$ create a scenario with pods consuming random real resources
 	$ implement a pod builder for random resource consuming pods (random are fourier series coefficients [realistic though])
 	* add an option to make synchronized spikes in resource usage
 	$ add "request update" request
-	- create the scenario and a similar one with request updates
+	$ create the scenario and a similar one with request updates
 * run the test with different configurations of the scenario (similar function shifted, for example)
 + make some useful metrics from test results
 + come up with a plugin and run the implemented scenario with it
