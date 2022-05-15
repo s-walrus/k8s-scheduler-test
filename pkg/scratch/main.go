@@ -133,7 +133,7 @@ func NewTestNode(name string) *v1.Node {
 	return &node
 }
 
-func NewRandomPodBuilder() (*podbuilder.PodBuilder, *podtraits.FiniteFourierSeries) {
+func NewRandomPodBuilder(accurateEstimate bool) (*podbuilder.PodBuilder, *podtraits.FiniteFourierSeries) {
 	var sinKs, cosKs []float64
 	var sumAbs float64 = 0
 	for i := 0; i < 8; i++ {
@@ -147,7 +147,12 @@ func NewRandomPodBuilder() (*podbuilder.PodBuilder, *podtraits.FiniteFourierSeri
 	k := sumAbs / 2
 
 	cpuFunc := podtraits.NewFiniteFourierSeries(k, sinKs, cosKs)
-	cpuEstimate := cpuFunc.Integrate(-1000, 0) / 1000
+	var cpuEstimate float64
+	if accurateEstimate {
+		cpuEstimate = k
+	} else {
+		cpuEstimate = cpuFunc.Integrate(-1000, 0)
+	}
 
 	pb := podbuilder.NewPodBuilder(fmt.Sprintf("random-pod-%d", rand.Intn(1000)))
 	pb.AddCPUUsageFunc(podtraits.NewFiniteFourierSeries(k, sinKs, cosKs))
@@ -155,7 +160,7 @@ func NewRandomPodBuilder() (*podbuilder.PodBuilder, *podtraits.FiniteFourierSeri
 	return pb, cpuFunc
 }
 
-func MyTestScenario(updateRequests bool) *execution.StaticRequestGenerator {
+func MyTestScenario(updateRequests bool, accurateEstimate bool) *execution.StaticRequestGenerator {
 	var reqs []execution.Request
 	for i := 0; i < 4; i++ {
 		reqs = append(reqs, requests.NewAddNode(NewTestNode(fmt.Sprintf("node%d", i+1)), 0))
@@ -172,7 +177,7 @@ func MyTestScenario(updateRequests bool) *execution.StaticRequestGenerator {
 					pod.Pod.Spec.Containers[0].Resources.Requests[v1.ResourceCPU] = *resource.NewQuantity(int64(cpuEstimate), resource.DecimalSI)
 				}
 			}
-			pb, cpuFunc := NewRandomPodBuilder()
+			pb, cpuFunc := NewRandomPodBuilder(accurateEstimate)
 			pod := pb.GetPod()
 			pods = append(pods, pod)
 			cpuFuncs = append(cpuFuncs, cpuFunc)
@@ -202,24 +207,28 @@ func main() {
 		"node4": 15000,
 	}
 
+	// inaccurate cpu load estimate, no cpu load updates
 	{
-		var sum float64 = 0
-		for i := 0; i < 10; i++ {
-			fmt.Printf("Running test without updates (%d/10)\n", i+1)
-			snapshots := execution.RunSchedulerIsolationTest(plugins, MyTestScenario(false))
-			sum += GetAverageCPULoadTimeRatio(snapshots, nodeCapacity)
+		for i := 0; i < 1000; i++ {
+			snapshots := execution.RunSchedulerIsolationTest(plugins, MyTestScenario(false, false))
+			fmt.Println(GetAverageCPULoadTimeRatio(snapshots, nodeCapacity))
 		}
-		fmt.Printf("Average CPU overload time ratio *without* updates: %.3f\n\n", sum/10)
 	}
 
+	// accurate estimate, no update
 	{
-		var sum float64 = 0
-		for i := 0; i < 10; i++ {
-			fmt.Printf("Running test with updates (%d/10)\n", i+1)
-			snapshots := execution.RunSchedulerIsolationTest(plugins, MyTestScenario(true))
-			sum += GetAverageCPULoadTimeRatio(snapshots, nodeCapacity)
+		for i := 0; i < 1000; i++ {
+			snapshots := execution.RunSchedulerIsolationTest(plugins, MyTestScenario(false, true))
+			fmt.Println(GetAverageCPULoadTimeRatio(snapshots, nodeCapacity))
 		}
-		fmt.Printf("Average CPU overload time ratio *with* updates: %.3f\n\n", sum/10)
+	}
+
+	// inaccurate estimate, with updates
+	{
+		for i := 0; i < 1000; i++ {
+			snapshots := execution.RunSchedulerIsolationTest(plugins, MyTestScenario(true, false))
+			fmt.Println(GetAverageCPULoadTimeRatio(snapshots, nodeCapacity))
+		}
 	}
 }
 
@@ -234,14 +243,14 @@ $ add a pod trait that reflects real resource usage
 	$ figure out how to do it with basic fourier series
 	$ add time consideration to pod traits handling
 	$ implement the pod trait
-	* track choke time
+	$ track choke time
 $ create a scenario with pods consuming random real resources
 	$ implement a pod builder for random resource consuming pods (random are fourier series coefficients [realistic though])
 	* add an option to make synchronized spikes in resource usage
 	$ add "request update" request
 	$ create the scenario and a similar one with request updates
 * run the test with different configurations of the scenario (similar function shifted, for example)
-+ make some useful metrics from test results
-+ come up with a plugin and run the implemented scenario with it
+* make some useful metrics from test results
+? come up with a plugin and run the implemented scenario with it
 
 */
