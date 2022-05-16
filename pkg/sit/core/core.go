@@ -1,4 +1,4 @@
-package pretender
+package core
 
 import (
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"

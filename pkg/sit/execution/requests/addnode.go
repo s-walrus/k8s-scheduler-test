@@ -2,7 +2,7 @@ package requests
 
 import (
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/kubernetes/pkg/scratch/execution"
+	"k8s.io/kubernetes/pkg/sit/execution"
 )
 
 type AddNode struct {

@@ -1,4 +1,4 @@
-package pretender
+package core
 
 type NodeSnapshot struct {
 	NodeCount         int

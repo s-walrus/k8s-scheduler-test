@@ -6,22 +6,22 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	"k8s.io/kubernetes/pkg/scratch/pretender"
-	"k8s.io/kubernetes/pkg/scratch/pretender/podtraits"
+	"k8s.io/kubernetes/pkg/sit/core"
+	"k8s.io/kubernetes/pkg/sit/core/podtraits"
 )
 
 type PodBuilder struct {
-	pod          pretender.PodWithTraits
+	pod          core.PodWithTraits
 	builtPodsCnt int
 }
 
-func (c *PodBuilder) GetPod() pretender.PodWithTraits {
+func (c *PodBuilder) GetPod() core.PodWithTraits {
 	podClone := c.pod.Pod.DeepCopy()
 	podName := fmt.Sprintf("%s%d", podClone.ObjectMeta.Name, c.builtPodsCnt)
 	podClone.ObjectMeta.Name = podName
 	podClone.ObjectMeta.UID = uuid.NewUUID()
 	c.builtPodsCnt++
-	return pretender.PodWithTraits{
+	return core.PodWithTraits{
 		Pod:    podClone,
 		Traits: c.pod.Traits,
 	}
@@ -87,7 +87,7 @@ func (c *PodBuilder) AddCPUUsageFunc(usageFunc *podtraits.FiniteFourierSeries) *
 
 func NewPodBuilder(name string) *PodBuilder {
 	return &PodBuilder{
-		pod: pretender.PodWithTraits{
+		pod: core.PodWithTraits{
 			Pod: &v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
@@ -113,7 +113,7 @@ func NewPodBuilder(name string) *PodBuilder {
 					},
 				},
 			},
-			Traits: []pretender.PodTrait{
+			Traits: []core.PodTrait{
 				podtraits.AffectNodeCount{},
 			},
 		},

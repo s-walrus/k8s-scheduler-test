@@ -16,11 +16,11 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/noderesources"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/queuesort"
 	st "k8s.io/kubernetes/pkg/scheduler/testing"
-	"k8s.io/kubernetes/pkg/scratch/execution"
-	"k8s.io/kubernetes/pkg/scratch/execution/requests"
-	"k8s.io/kubernetes/pkg/scratch/pretender"
-	"k8s.io/kubernetes/pkg/scratch/pretender/podbuilder"
-	"k8s.io/kubernetes/pkg/scratch/pretender/podtraits"
+	"k8s.io/kubernetes/pkg/sit/core"
+	"k8s.io/kubernetes/pkg/sit/core/podbuilder"
+	"k8s.io/kubernetes/pkg/sit/core/podtraits"
+	"k8s.io/kubernetes/pkg/sit/execution"
+	"k8s.io/kubernetes/pkg/sit/execution/requests"
 	"math"
 	"math/rand"
 	"time"
@@ -53,7 +53,7 @@ func NewBalancedAllocation(plArgs runtime.Object, h framework.Handle) (framework
 	})
 }
 
-func PrintTestResult(snapshots []pretender.StateSnapshot) {
+func PrintTestResult(snapshots []core.StateSnapshot) {
 	for _, s := range snapshots {
 		fmt.Println("{")
 		for node, state := range s {
@@ -71,7 +71,7 @@ func PrintTestResult(snapshots []pretender.StateSnapshot) {
 	}
 }
 
-func CountCPUOverloadTime(snapshots []pretender.StateSnapshot, nodeCapacity map[string]int64) map[string]int64 {
+func CountCPUOverloadTime(snapshots []core.StateSnapshot, nodeCapacity map[string]int64) map[string]int64 {
 	olTime := map[string]int64{}
 
 	for i, snapshot := range snapshots {
@@ -89,7 +89,7 @@ func CountCPUOverloadTime(snapshots []pretender.StateSnapshot, nodeCapacity map[
 	return olTime
 }
 
-func GetAverageCPULoadTimeRatio(snapshots []pretender.StateSnapshot, nodeCapacity map[string]int64) float64 {
+func GetAverageCPULoadTimeRatio(snapshots []core.StateSnapshot, nodeCapacity map[string]int64) float64 {
 	var nodes []string
 	for k := range nodeCapacity {
 		nodes = append(nodes, k)
@@ -166,7 +166,7 @@ func MyTestScenario(updateRequests bool, accurateEstimate bool) *execution.Stati
 		reqs = append(reqs, requests.NewAddNode(NewTestNode(fmt.Sprintf("node%d", i+1)), 0))
 	}
 
-	var pods []pretender.PodWithTraits
+	var pods []core.PodWithTraits
 	var cpuFuncs []*podtraits.FiniteFourierSeries
 
 	for i := 0; i < 10000; i++ {
@@ -234,6 +234,8 @@ func main() {
 
 /*
 
+TODO clear all this below
+
 Closest project goals:
 + test if updating pod resource requests is beneficial
 + [come up with a plugin and test it on a relatively large scale]
@@ -252,5 +254,10 @@ $ create a scenario with pods consuming random real resources
 * run the test with different configurations of the scenario (similar function shifted, for example)
 * make some useful metrics from test results
 ? come up with a plugin and run the implemented scenario with it
+
+Things I can do:
++ choose a specific cpu load function and its variations, approximate it with finite fourier series and evaluate overload time using them
++ just throw self-anti-affinity
++ apply self-anti-affinity and reschedule everything once in a while
 
 */

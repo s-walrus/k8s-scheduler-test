@@ -1,7 +1,7 @@
 package requests
 
 import (
-	"k8s.io/kubernetes/pkg/scratch/execution"
+	"k8s.io/kubernetes/pkg/sit/execution"
 )
 
 type RemoveNode struct {

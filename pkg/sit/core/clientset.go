@@ -1,4 +1,4 @@
-package pretender
+package core
 
 import (
 	"k8s.io/client-go/discovery"

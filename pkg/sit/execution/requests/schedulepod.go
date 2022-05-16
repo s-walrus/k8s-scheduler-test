@@ -1,12 +1,12 @@
 package requests
 
 import (
-	"k8s.io/kubernetes/pkg/scratch/execution"
-	"k8s.io/kubernetes/pkg/scratch/pretender"
+	"k8s.io/kubernetes/pkg/sit/core"
+	"k8s.io/kubernetes/pkg/sit/execution"
 )
 
 type SchedulePod struct {
-	pod  pretender.PodWithTraits
+	pod  core.PodWithTraits
 	time int64
 }
 
@@ -18,6 +18,6 @@ func (r SchedulePod) Accept(handler *execution.RequestHandler) error {
 	return handler.SchedulePod(r.pod)
 }
 
-func NewSchedulePod(pod pretender.PodWithTraits, time int64) *SchedulePod {
+func NewSchedulePod(pod core.PodWithTraits, time int64) *SchedulePod {
 	return &SchedulePod{pod: pod, time: time}
 }

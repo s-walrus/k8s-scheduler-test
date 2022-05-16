@@ -8,13 +8,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubernetes/pkg/scheduler"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
-	"k8s.io/kubernetes/pkg/scratch/pretender"
+	"k8s.io/kubernetes/pkg/sit/core"
 )
 
 // RequestHandler runs scheduling logic by request from Request class
 // (may require refactoring to better reflect its purpose)
 type RequestHandler struct {
-	ps    *pretender.StateManager
+	ps    *core.StateManager
 	fwk   framework.Framework
 	sched *scheduler.Scheduler
 }
@@ -29,7 +29,7 @@ func (c *RequestHandler) RemoveNode(name string) error {
 	return err
 }
 
-func (c *RequestHandler) SchedulePod(pod pretender.PodWithTraits) error {
+func (c *RequestHandler) SchedulePod(pod core.PodWithTraits) error {
 	c.ps.AddOrUpdatePod(pod)
 	scheduler.FakeScheduleOne(context.Background(), c.sched, c.fwk, pod.Pod)
 	return nil
@@ -44,11 +44,11 @@ func (c *RequestHandler) UpdateTime(time int64) error {
 	return c.ps.UpdateTime(time)
 }
 
-func (c *RequestHandler) UpdatePod(pod pretender.PodWithTraits) error {
+func (c *RequestHandler) UpdatePod(pod core.PodWithTraits) error {
 	return c.ps.UpdatePod(pod)
 }
 
-func NewRequestHandler(ps *pretender.StateManager, fwk framework.Framework, sched *scheduler.Scheduler) RequestHandler {
+func NewRequestHandler(ps *core.StateManager, fwk framework.Framework, sched *scheduler.Scheduler) RequestHandler {
 	return RequestHandler{
 		ps:    ps,
 		fwk:   fwk,
