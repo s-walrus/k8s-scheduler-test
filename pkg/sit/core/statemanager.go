@@ -39,7 +39,12 @@ func (s *StateManager) Bind(nodeName string, podUID types.UID) error {
 	if !ok {
 		return errors.New("no pod with given UID in cache")
 	}
-	err := s.ps.Bind(nodeName, podUID, pwt.Traits)
+	pwt.Pod.Spec.NodeName = nodeName
+	err := s.sched.SchedulerCache.AddPod(pwt.Pod)
+	if err != nil {
+		return err
+	}
+	err = s.ps.Bind(nodeName, podUID, pwt.Traits)
 	if err == nil {
 		pwt.Pod.Spec.NodeName = nodeName
 	}
@@ -69,8 +74,9 @@ func (s *StateManager) RemoveNode(nodeName string) error {
 	return err
 }
 
-func (s *StateManager) AddOrUpdatePod(pt PodWithTraits) {
+func (s *StateManager) AddOrUpdatePod(pt PodWithTraits) error {
 	s.podCache[pt.Pod.UID] = pt
+	return nil
 }
 
 func (s *StateManager) RemovePod(uid types.UID) error {
@@ -101,7 +107,11 @@ func (s *StateManager) UpdateTime(time int64) error {
 
 func (s *StateManager) UpdatePod(pod PodWithTraits) error {
 	uid := pod.Pod.UID
-	err := s.sched.SchedulerCache.UpdatePod(s.podCache[uid].Pod, pod.Pod)
+	err := s.sched.SchedulerCache.RemovePod(s.podCache[uid].Pod)
+	if err != nil {
+		return err
+	}
+	err = s.sched.SchedulerCache.AssumePod(pod.Pod)
 	if err != nil {
 		return err
 	}

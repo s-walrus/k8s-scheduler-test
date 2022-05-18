@@ -19,6 +19,8 @@ type RequestHandler struct {
 	sched *scheduler.Scheduler
 }
 
+// FIXME move request function declarations to requests declarations
+
 func (c *RequestHandler) AddNode(node *v1.Node) error {
 	_, err := c.fwk.ClientSet().CoreV1().Nodes().Create(context.Background(), node, metav1.CreateOptions{})
 	return err
@@ -30,7 +32,10 @@ func (c *RequestHandler) RemoveNode(name string) error {
 }
 
 func (c *RequestHandler) SchedulePod(pod core.PodWithTraits) error {
-	c.ps.AddOrUpdatePod(pod)
+	err := c.ps.AddOrUpdatePod(pod)
+	if err != nil {
+		return err
+	}
 	scheduler.FakeScheduleOne(context.Background(), c.sched, c.fwk, pod.Pod)
 	return nil
 }

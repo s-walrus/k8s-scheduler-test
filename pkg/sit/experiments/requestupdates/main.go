@@ -172,9 +172,11 @@ func MyTestScenario(updateRequests bool, accurateEstimate bool) *execution.Stati
 	for i := 0; i < 10000; i++ {
 		if i%100 == 0 {
 			if updateRequests {
-				for i, pod := range pods {
-					cpuEstimate := cpuFuncs[i].Integrate(float64((i-1)*1000), float64(i*1000))
+				for j, pod := range pods {
+					cpuEstimate := cpuFuncs[j].Integrate(float64((i-1)*1000), float64(i*1000))
 					pod.Pod.Spec.Containers[0].Resources.Requests[v1.ResourceCPU] = *resource.NewQuantity(int64(cpuEstimate), resource.DecimalSI)
+					reqs = append(reqs, requests.NewUpdatePod(pod, int64(i*1000)))
+
 				}
 			}
 			pb, cpuFunc := NewRandomPodBuilder(accurateEstimate)
@@ -206,6 +208,17 @@ func main() {
 		"node3": 15000,
 		"node4": 15000,
 	}
+
+	//snapshots := execution.RunSchedulerIsolationTest(plugins, MyTestScenario(true, false))
+	//for i, v := range snapshots {
+	//	if i < 4 {
+	//		continue
+	//	}
+	//	fmt.Println(v["node1"].CPULoad)
+	//	fmt.Println(v["node2"].CPULoad)
+	//	fmt.Println(v["node3"].CPULoad)
+	//	fmt.Println(v["node4"].CPULoad)
+	//}
 
 	// inaccurate cpu load estimate, no cpu load updates
 	{

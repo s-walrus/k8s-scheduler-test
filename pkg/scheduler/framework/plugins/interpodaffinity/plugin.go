@@ -18,7 +18,7 @@ package interpodaffinity
 
 import (
 	"fmt"
-	staticnslister "k8s.io/kubernetes/pkg/sit/nslister"
+	staticnslister "k8s.io/kubernetes/pkg/sit/core/nslister"
 
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
